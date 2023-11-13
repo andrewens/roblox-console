@@ -1,0 +1,26 @@
+{
+  "name": "roblox-cli",
+  "tree": {
+    "$className": "DataModel",
+
+    "ReplicatedStorage": {
+      "$className": "ReplicatedStorage",
+      "$path": "src/replicated-storage",
+      "$ignoreUnknownInstances": true
+    },
+
+    "ServerScriptService": {
+      "roblox-cli-tests": {
+        "$path": "server-script-service"
+      }
+    },
+
+    "StarterPlayer": {
+      "StarterPlayerScripts": {
+        "roblox-cli-tests": {
+          "$path": "src/starter-player-scripts"
+        }
+      }
+    }
+  }
+}
