@@ -11,7 +11,7 @@
 
     "ServerScriptService": {
       "roblox-cli-tests": {
-        "$path": "server-script-service"
+        "$path": "src/server-script-service"
       }
     },
 
