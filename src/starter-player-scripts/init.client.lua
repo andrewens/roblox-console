@@ -35,37 +35,58 @@ local stylesheetDemo = [[
 
 return function(RBXClass, CustomClass, CustomProperty)
 
+	RBXClass.Frame {
+		BorderSizePixel = 0,
+		BackgroundColor3 = "black",
+	}
+	RBXClass.ScrollingFrame {
+		BorderSizePixel = 0,
+		BackgroundColor3 = "black",
+		ScrollBarThickness = 8,
+	}
+
 	local TextStyle = {
 		TextColor3 = "white",
 		BackgroundColor3 = "black",
-		TextXAlignment = Enum.TextXAlignment.Left,
 		BorderSizePixel = 0,
+		TextXAlignment = Enum.TextXAlignment.Left
 	}
-	local FrameStyle = {
-		BorderSizePixel = 0,
-		BackgroundColor3 = "black",
-	}
-
 	RBXClass.TextLabel(TextStyle)
-	RBXClass.TextButton(TextStyle)
 	RBXClass.TextBox(TextStyle)
-	RBXClass.Frame(FrameStyle)
-	RBXClass.ScrollingFrame(FrameStyle)
+	RBXClass.TextButton(TextStyle)
 
-	-- CustomProperties allow us to define color3's in terms of strings
-	
+	-- these custom classes are defined in the actual source code for this editor
+	-- using something like MyTextLabel:SetAttribute("class", "FileName")
+
+	CustomClass.FileName {
+		TextColor3 = "white"
+	}
+	CustomClass.EditorToggle {
+		TextColor3 = "white",
+		TextXAlignment = Enum.TextXAlignment.Center,
+	}
+	CustomClass.ConsoleText {
+		TextColor3 = "green",
+	}
+	CustomClass.FileEditor {
+		TextColor3 = "orange",
+	}
+
+	-- CustomProperties allow us to define Color3's in terms of strings
+
+	local COLOR_PALETTE = {
+		white = Color3.new(1, 1, 1),
+		black = Color3.new(0.1, 0.1, 0.1),
+		green = Color3.new(0, 1, 0),
+		orange = Color3.new(1, 0.5, 0),
+	}
 	local function customColor3(RBXInstance, property, value)
-		if value == "white" then
-			value = Color3.new(1, 1, 1)
-		elseif value == "black" then
-			value = Color3.new(0.1, 0.1, 0.1)
-		end
-		RBXInstance[property] = value
+		RBXInstance[property] = COLOR_PALETTE[value] or value
 	end
 	CustomProperty.BackgroundColor3(customColor3)
 	CustomProperty.TextColor3(customColor3)
-
-end]]
+end
+]]
 local paddingStylesheet = [[
 return function(RBX, Custom, Property)
 
@@ -235,6 +256,7 @@ local function console(Frame, updateStyleSheets)
 		TextLabel.TextYAlignment = Enum.TextYAlignment.Top
 		TextLabel.TextXAlignment = Enum.TextXAlignment.Left
 		TextLabel.TextWrapped = true
+		TextLabel:SetAttribute("class", "ConsoleText")
 		TextLabel.Parent = ScrollingFrame
 
 		BufferMaid(TextLabel)
@@ -260,6 +282,7 @@ local function console(Frame, updateStyleSheets)
 	CommandLine.LayoutOrder = 100000
 	CommandLine.ClearTextOnFocus = false
 	CommandLine.Text = START_OF_LINE_SYMBOL
+	CommandLine:SetAttribute("class", "ConsoleText")
 	CommandLine.Parent = ScrollingFrame
 
 	local commandInput = ""
@@ -332,6 +355,7 @@ local function textEditor(Frame)
 	FileName.Size = UDim2.new(1, 0, 0, FILE_NAME_HEIGHT)
 	FileName.ClearTextOnFocus = false
 	FileName.TextXAlignment = Enum.TextXAlignment.Left
+	FileName:SetAttribute("class", "FileName")
 	FileName.Parent = Frame
 	EditorMaid(FileName)
 
@@ -355,6 +379,7 @@ local function textEditor(Frame)
 	FileEditor.TextXAlignment = Enum.TextXAlignment.Left
 	FileEditor.TextYAlignment = Enum.TextYAlignment.Top
 	FileEditor.TextWrapped = true
+	FileEditor:SetAttribute("class", "FileEditor")
 	FileEditor.Parent = ScrollingFrame
 	EditorMaid(FileEditor)
 
@@ -397,6 +422,7 @@ local function fileBrowser(Frame)
 	NewFile.Size = UDim2.new(1, 0, 0, NEW_FILE_BUTTON_HEIGHT)
 	NewFile.Text = "NEW FILE [+]"
 	NewFile.Activated:Connect(newFile)
+	NewFile:SetAttribute("class", "FileName")
 	NewFile.Parent = Frame
 
 	local Container = Instance.new("ScrollingFrame")
@@ -414,6 +440,7 @@ local function fileBrowser(Frame)
 			local FileButton = Instance.new("TextButton")
 			FileButton.Position = UDim2.new(0, 0, 0, (i - 1) * FILE_BUTTON_HEIGHT)
 			FileButton.Size = UDim2.new(1, 0, 0, FILE_BUTTON_HEIGHT)
+			FileButton:SetAttribute("class", "FileName")
 			FileButton.Parent = Container
 			UpdateMaid(File:changed("Name", function(_, newName)
 				FileButton.Name = newName
@@ -445,6 +472,7 @@ local function guiMain(Parent)
 
 	local ToggleButton = Instance.new("TextButton")
 	ToggleButton.Size = UDim2.new(1, 0, 0, 50)
+	ToggleButton:SetAttribute("class", "EditorToggle")
 	ToggleButton.Parent = TopBarGui
 
 	local function toggle()
