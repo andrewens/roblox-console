@@ -19,15 +19,50 @@ local function file(fileName, text)
 end
 local AppState = ProxyTable({
 	Files = ProxyTable({
-		file("stylesheet-demo.rcss", [[return function(RBXClass, ...)
-	RBXClass.TextLabel {
-		TextColor3 = Color3.new(1, 1, 1)
+		file(
+			"stylesheet-demo.rcss",
+			[[return function(RBXClass, CustomClass, CustomProperty)
+	-- if your file name ends in ".rcss", it will be interpreted as a stylesheet
+
+	local TextStyle = {
+		TextColor3 = "white",
+		BackgroundColor3 = "black",
+		TextXAlignment = Enum.TextXAlignment.Left,
+		BorderSizePixel = 0,
 	}
-	RBXClass.TextButton {
-		TextColor3 = Color3.new(1, 1, 1)
+	local FrameStyle = {
+		BorderSizePixel = 0,
+		BackgroundColor3 = "black",
 	}
+
+	RBXClass.TextLabel(TextStyle)
+	RBXClass.TextButton(TextStyle)
+	RBXClass.TextBox(TextStyle)
+	RBXClass.Frame(FrameStyle)
+	RBXClass.ScrollingFrame(FrameStyle)
+
+	-- CustomProperties allow us to define color3's in terms of strings
+	local function customColor3(RBXInstance, property, value)
+		if value == "white" then
+			value = Color3.new(1, 1, 1)
+		elseif value == "black" then
+			value = Color3.new(0.1, 0.1, 0.1)
+		end
+		RBXInstance[property] = value
+	end
+	CustomProperty.BackgroundColor3(customColor3)
+	CustomProperty.TextColor3(customColor3)
 end]]),
-		file("test2", 'return function()\n\tprint("hewwo wurld uwu")\nend\n'),
+		file("hello-world", [[return function(Console, ...)
+	-- command line applications take Console as first arg, then all args passed from command line
+	Console.output("Hi mom!")
+end]]),
+		file("add", [[return function(Console, a, b, ...)
+	-- command line applications take Console as first arg, then all args passed from command line
+	a = tonumber(a)
+	b = tonumber(b)
+	Console.output(a + b)
+end]]),
 	}),
 	SelectedFile = 1,
 })
@@ -49,6 +84,12 @@ local function console(Frame, updateStyleSheets)
 
 	local ConsoleInterface
 
+	local PROGRAM_DESC = {
+		clear = " -- Clears all text from console",
+		save = " -- Compiles program files & updates GUI style",
+		help = " -- Lists all programs",
+	}
+
 	local Programs = {}
 	local StyleSheets = {}
 	local function updatePrograms()
@@ -59,27 +100,34 @@ local function console(Frame, updateStyleSheets)
 			echo = function(CLI, ...)
 				CLI.output(table.concat({ ... }, " "))
 			end,
-			helloworld = function(CLI, ...)
-				CLI.output("Hello world!")
-			end,
-			update = updatePrograms,
 			save = updatePrograms,
+			help = function(CLI)
+				for programName, _ in Programs do
+					CLI.output(programName .. (PROGRAM_DESC[programName] or ""))
+				end
+			end,
 		}
 		StyleSheets = {}
 		for i, File in AppState.Files do
+			-- can't have two programs with the same name
+			if Programs[File.Name] then
+				ConsoleInterface.output("Attempt to define program \"" .. File.Name .. "\" multiple times")
+				continue
+			end
+
+			-- use Loadstring to turn the File.Source (string) into a real Lua function
 			local compileProgram, failMessage = Loadstring(File.Source)
 			if failMessage then
 				ConsoleInterface.output("Error while compiling " .. File.Name .. ": " .. tostring(failMessage))
 				continue
 			end
 
+			-- kinda meta, but the function has to return a function which is the actual command line program or rcss stylesheet
 			local s, program = pcall(compileProgram)
 			if not s then
 				ConsoleInterface.output("Error while compiling " .. File.Name .. ": " .. tostring(program))
 				continue
 			end
-
-			--  must return a function
 			if typeof(program) ~= "function" then
 				ConsoleInterface.output("File " .. File.Name .. " failed to return a function")
 				continue
@@ -120,8 +168,7 @@ local function console(Frame, updateStyleSheets)
 	ListLayout.Parent = ScrollingFrame
 
 	local buffer = {
-		"TestingTestingTesting",
-		"The FitnessGram™ Pacer Test is a multistage aerobic capacity test that progressively gets more difficult as it continues. The 20 meter pacer test will begin in 30 seconds. Line up at the start. The running speed starts slowly, but gets faster each minute after you hear this signal. [beep] A single lap should be completed each time you hear this sound. [ding] Remember to run in a straight line, and run as long as possible. The second time you fail to complete a lap before the sound, your test is over. The test will begin on the word start. On your mark, get ready, start.",
+		'Welcome to the `roblox-console` demo. Type "help" to see a list of commands.',
 	}
 
 	local BufferMaid = Maid()
@@ -231,7 +278,7 @@ local function textEditor(Frame)
 	local EditorMaid = Maid()
 
 	local FILE_NAME_HEIGHT = 50
-	local TEXT_SIZE = 20
+	local TEXT_SIZE = 12
 
 	-- input a different file name
 	local FileName = Instance.new("TextBox")
