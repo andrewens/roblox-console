@@ -139,9 +139,6 @@ local function console(Frame, updateStyleSheets)
 			clear = function(CLI)
 				CLI.clear()
 			end,
-			echo = function(CLI, ...)
-				CLI.output(table.concat({ ... }, " "))
-			end,
 			save = updatePrograms,
 			help = function(CLI)
 				for programName, _ in Programs do
@@ -196,7 +193,7 @@ local function console(Frame, updateStyleSheets)
 	local COMMAND_SEPARATOR_START_OF_LINE_SYMBOL = " "
 
 	local function getTextSize(str)
-		return TextService:GetTextSize(str, LINE_HEIGHT, FONT, Frame.AbsoluteSize - Vector2.new(SCROLLBAR_WIDTH, 0))
+		return TextService:GetTextSize(str, 12, FONT, Frame.AbsoluteSize - Vector2.new(SCROLLBAR_WIDTH, 0))
 	end
 
 	local ScrollingFrame = Instance.new("ScrollingFrame")
@@ -224,7 +221,6 @@ local function console(Frame, updateStyleSheets)
 		TextLabel.Size = UDim2.new(0, size.X, 0, size.Y + 0.5 * LINE_HEIGHT)
 		TextLabel.Text = str
 		TextLabel.LayoutOrder = i
-		TextLabel.TextScaled = true
 		TextLabel.TextYAlignment = Enum.TextYAlignment.Top
 		TextLabel.TextXAlignment = Enum.TextXAlignment.Left
 		TextLabel.TextWrapped = true
@@ -248,7 +244,6 @@ local function console(Frame, updateStyleSheets)
 
 	local CommandLine = Instance.new("TextBox")
 	CommandLine.Size = UDim2.new(1, 0, 0, LINE_HEIGHT)
-	CommandLine.TextScaled = true
 	CommandLine.TextXAlignment = Enum.TextXAlignment.Left
 	CommandLine.TextYAlignment = Enum.TextYAlignment.Top
 	CommandLine.LayoutOrder = 100000
