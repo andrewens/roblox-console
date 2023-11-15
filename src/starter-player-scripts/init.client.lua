@@ -17,7 +17,7 @@ local helloWorldProgram = [[
 
 return function(Console, ...)
 
-	Console.output("Hi mom!", ...)
+	Console.output("Hi mom! " .. table.concat({...}, " "))
 
 end]]
 local addTwoNumsProgram = [[
