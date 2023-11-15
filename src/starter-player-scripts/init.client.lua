@@ -14,19 +14,27 @@ local LocalPlayer = Players.LocalPlayer
 -- default program source
 local helloWorldProgram = [[
 -- command line applications take Console as first arg, then all args passed from command line
+
 return function(Console, ...)
+
 	Console.output("Hi mom!", ...)
+
 end]]
 local addTwoNumsProgram = [[
 -- command line applications take Console as first arg, then all args passed from command line
+
 return function(Console, a, b, ...)
+
 	a = tonumber(a)
 	b = tonumber(b)
 	Console.output(a + b)
+
 end]]
 local stylesheetDemo = [[
 -- if your file name ends in ".rcss", it will be interpreted as a stylesheet
+
 return function(RBXClass, CustomClass, CustomProperty)
+
 	local TextStyle = {
 		TextColor3 = "white",
 		BackgroundColor3 = "black",
@@ -45,6 +53,7 @@ return function(RBXClass, CustomClass, CustomProperty)
 	RBXClass.ScrollingFrame(FrameStyle)
 
 	-- CustomProperties allow us to define color3's in terms of strings
+	
 	local function customColor3(RBXInstance, property, value)
 		if value == "white" then
 			value = Color3.new(1, 1, 1)
@@ -55,6 +64,7 @@ return function(RBXClass, CustomClass, CustomProperty)
 	end
 	CustomProperty.BackgroundColor3(customColor3)
 	CustomProperty.TextColor3(customColor3)
+
 end]]
 local paddingStylesheet = [[
 return function(RBX, Custom, Property)
@@ -89,6 +99,7 @@ return function(RBX, Custom, Property)
 	Property.PaddingRight(customPadding)
 	Property.PaddingTop(customPadding)
 	Property.PaddingBottom(customPadding)
+
 end
 ]]
 
