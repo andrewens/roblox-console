@@ -6,6 +6,7 @@ local TextService = game:GetService("TextService")
 local Maid = require(script:FindFirstChild("Maid"))
 local ProxyTable = require(script:FindFirstChild("ProxyTable"))
 local Loadstring = require(ReplicatedStorage:FindFirstChild("Loadstring"))
+local RobloxCSS = require(ReplicatedStorage:FindFirstChild("roblox-css"))
 
 local LocalPlayer = Players.LocalPlayer
 
@@ -18,8 +19,15 @@ local function file(fileName, text)
 end
 local AppState = ProxyTable({
 	Files = ProxyTable({
-		file("test", "--[[\nHello there\n--]]\n"),
-		file("test2", 'return function()\n\tprint("hello ""world")\nend\n'),
+		file("stylesheet-demo.rcss", [[return function(RBXClass, ...)
+	RBXClass.TextLabel {
+		TextColor3 = Color3.new(1, 1, 1)
+	}
+	RBXClass.TextButton {
+		TextColor3 = Color3.new(1, 1, 1)
+	}
+end]]),
+		file("test2", 'return function()\n\tprint("hewwo wurld uwu")\nend\n'),
 	}),
 	SelectedFile = 1,
 })
@@ -36,12 +44,13 @@ local function newFile()
 end
 
 -- gui objects
-local function console(Frame)
+local function console(Frame, updateStyleSheets)
 	local ConsoleMaid = Maid()
 
 	local ConsoleInterface
 
 	local Programs = {}
+	local StyleSheets = {}
 	local function updatePrograms()
 		Programs = {
 			clear = function(CLI)
@@ -54,30 +63,39 @@ local function console(Frame)
 				CLI.output("Hello world!")
 			end,
 			update = updatePrograms,
+			save = updatePrograms,
 		}
+		StyleSheets = {}
 		for i, File in AppState.Files do
-			print("compile", File.Name)
-			local programFunction, failMessage = Loadstring(File.Source)
+			local compileProgram, failMessage = Loadstring(File.Source)
 			if failMessage then
 				ConsoleInterface.output("Error while compiling " .. File.Name .. ": " .. tostring(failMessage))
 				continue
 			end
 
-			local s, output = pcall(programFunction)
+			local s, program = pcall(compileProgram)
 			if not s then
-				ConsoleInterface.output("Error while compiling " .. File.Name .. ": " .. tostring(output))
+				ConsoleInterface.output("Error while compiling " .. File.Name .. ": " .. tostring(program))
 				continue
 			end
 
 			--  must return a function
-			if typeof(output) ~= "function" then
+			if typeof(program) ~= "function" then
 				ConsoleInterface.output("File " .. File.Name .. " failed to return a function")
 				continue
 			end
 
-			Programs[File.Name] = output
-			print(File.Name, "->", output)
+			-- if file name ends in .rcss, it's a stylesheet
+			if string.sub(File.Name, string.len(File.Name) - 4, -1) == ".rcss" then
+				table.insert(StyleSheets, program)
+				continue
+			end
+
+			-- normal command line program
+			Programs[File.Name] = program
 		end
+
+		updateStyleSheets(StyleSheets)
 	end
 
 	local LINE_HEIGHT = 20
@@ -308,10 +326,19 @@ local function guiMain(Parent)
 	ScreenGui.Parent = Parent
 	GuiMaid(ScreenGui)
 
+	local StyleMaid = Maid()
+	local function updateStyleSheets(NewStyleSheets)
+		StyleMaid:DoCleaning()
+		local dismountHandle = RobloxCSS.mount(ScreenGui, NewStyleSheets)
+		StyleMaid:GiveTask(function()
+			RobloxCSS.dismount(dismountHandle)
+		end)
+	end
+
 	local Console = Instance.new("Frame")
 	Console.Size = UDim2.new(0.4, 0, 1, 0)
 	Console.Parent = ScreenGui
-	GuiMaid(console(Console))
+	GuiMaid(console(Console, updateStyleSheets))
 
 	local TextEditor = Instance.new("Frame")
 	TextEditor.Position = UDim2.new(0.4, 0, 0, 0)
@@ -327,9 +354,5 @@ local function guiMain(Parent)
 
 	return GuiMaid
 end
-
---[[
-	Console(Programs, Frame)
-]]
 
 guiMain(LocalPlayer.PlayerGui)
