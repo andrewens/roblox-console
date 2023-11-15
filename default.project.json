@@ -8,6 +8,11 @@
       "$path": "src/replicated-storage",
       "$ignoreUnknownInstances": true
     },
+    "ServerScriptService": {
+      "roblox-console-tests": {
+        "$path": "src/server-script-service"
+      }
+    },
     "StarterPlayer": {
       "StarterPlayerScripts": {
         "roblox-console-demo": {

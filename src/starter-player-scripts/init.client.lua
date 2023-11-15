@@ -393,7 +393,6 @@ local function textEditor(Frame)
 		ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, textSizeY + 50)
 	end
 	FileEditor:GetPropertyChangedSignal("Text"):Connect(updateCanvasSize)
-	
 
 	local function setFileSource()
 		local File = getSelectedFile()
@@ -519,5 +518,7 @@ local function guiMain(Parent)
 
 	return GuiMaid
 end
+
+
 
 guiMain(LocalPlayer.PlayerGui)
