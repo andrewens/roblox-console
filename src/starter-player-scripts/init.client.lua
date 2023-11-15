@@ -3,8 +3,8 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TextService = game:GetService("TextService")
 
-local Maid = require(ReplicatedStorage:FindFirstChild("util"):FindFirstChild("Maid"))
-local ProxyTable = require(ReplicatedStorage:FindFirstChild("util"):FindFirstChild("ProxyTable"))
+local Maid = require(script:FindFirstChild("Maid"))
+local ProxyTable = require(script:FindFirstChild("ProxyTable"))
 local Loadstring = require(ReplicatedStorage:FindFirstChild("Loadstring"))
 
 local LocalPlayer = Players.LocalPlayer
