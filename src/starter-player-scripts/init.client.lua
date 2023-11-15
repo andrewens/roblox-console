@@ -352,12 +352,17 @@ local function textEditor(Frame)
 	FileEditor.Parent = ScrollingFrame
 	EditorMaid(FileEditor)
 
-	FileEditor:GetPropertyChangedSignal("Text"):Connect(function()
-		local textSize =
-			TextService:GetTextSize(FileEditor.Text, FileEditor.TextSize, FileEditor.Font, FileEditor.AbsoluteSize)
-		FileEditor.Size = UDim2.new(1, 0, 0, textSize.Y + 50)
-		ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, textSize.Y + 50)
-	end)
+	local function updateCanvasSize()
+		-- TextService is rubbish :/
+		--local textSize =
+		--	TextService:GetTextSize(FileEditor.Text, FileEditor.TextSize, FileEditor.Font, FileEditor.AbsoluteSize)
+
+		local textSizeY = string.len(FileEditor.Text)
+		FileEditor.Size = UDim2.new(1, 0, 0, textSizeY + 50)
+		ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, textSizeY + 50)
+	end
+	FileEditor:GetPropertyChangedSignal("Text"):Connect(updateCanvasSize)
+	
 
 	local function setFileSource()
 		local File = getSelectedFile()
@@ -371,6 +376,8 @@ local function textEditor(Frame)
 		FileName.Text = File.Name
 		FileEditor.Text = File.Source
 	end))
+
+	updateCanvasSize()
 
 	return EditorMaid
 end
