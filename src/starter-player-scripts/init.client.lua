@@ -2,6 +2,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TextService = game:GetService("TextService")
+local StarterGui = game:GetService("StarterGui")
 
 local Maid = require(script:FindFirstChild("Maid"))
 local ProxyTable = require(script:FindFirstChild("ProxyTable"))
@@ -381,7 +382,7 @@ local function fileBrowser(Frame)
 
 	local NewFile = Instance.new("TextButton")
 	NewFile.Size = UDim2.new(1, 0, 0, NEW_FILE_BUTTON_HEIGHT)
-	NewFile.Text = "(+) NEW FILE"
+	NewFile.Text = "NEW FILE [+]"
 	NewFile.Activated:Connect(newFile)
 	NewFile.Parent = Frame
 
@@ -419,16 +420,42 @@ end
 local function guiMain(Parent)
 	local GuiMaid = Maid()
 
-	local ScreenGui = Instance.new("ScreenGui")
+	StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, false)
+
+	local ScreenGui
+
+	-- top bar screen gui (enables/disables editor)
+	local TopBarGui = Instance.new("ScreenGui")
+	TopBarGui.IgnoreGuiInset = true
+	TopBarGui.Parent = Parent
+	GuiMaid(TopBarGui)
+
+	local ToggleButton = Instance.new("TextButton")
+	ToggleButton.Size = UDim2.new(1, 0, 0, 50)
+	ToggleButton.Parent = TopBarGui
+
+	local function toggle()
+		ScreenGui.Enabled = not ScreenGui.Enabled
+		ToggleButton.Text = if ScreenGui.Enabled then "HIDE EDITOR" else "SHOW EDITOR"
+	end
+	ToggleButton.Activated:Connect(toggle)
+
+	-- IDE screen gui
+	ScreenGui = Instance.new("ScreenGui")
 	ScreenGui.Parent = Parent
 	GuiMaid(ScreenGui)
+
+	ScreenGui.Enabled = false
+	toggle()
 
 	local StyleMaid = Maid()
 	local function updateStyleSheets(NewStyleSheets)
 		StyleMaid:DoCleaning()
 		local dismountHandle = RobloxCSS.mount(ScreenGui, NewStyleSheets)
+		local dismountHandle2 = RobloxCSS.mount(TopBarGui, NewStyleSheets)
 		StyleMaid:GiveTask(function()
 			RobloxCSS.dismount(dismountHandle)
+			RobloxCSS.dismount(dismountHandle2)
 		end)
 	end
 
