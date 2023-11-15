@@ -278,7 +278,6 @@ local function textEditor(Frame)
 	local EditorMaid = Maid()
 
 	local FILE_NAME_HEIGHT = 50
-	local TEXT_SIZE = 12
 
 	-- input a different file name
 	local FileName = Instance.new("TextBox")
@@ -296,17 +295,26 @@ local function textEditor(Frame)
 	FileName.ReturnPressedFromOnScreenKeyboard:Connect(setFileName)
 
 	-- edit the file
+	local ScrollingFrame = Instance.new("ScrollingFrame")
+	ScrollingFrame.Position = UDim2.new(0, 0, 0, FILE_NAME_HEIGHT)
+	ScrollingFrame.Size = UDim2.new(1, 0, 1, -FILE_NAME_HEIGHT)
+	ScrollingFrame.Parent = Frame
+	EditorMaid(ScrollingFrame)
+
 	local FileEditor = Instance.new("TextBox")
-	FileEditor.Position = UDim2.new(0, 0, 0, FILE_NAME_HEIGHT)
-	FileEditor.Size = UDim2.new(1, 0, 1, -FILE_NAME_HEIGHT)
 	FileEditor.ClearTextOnFocus = false
 	FileEditor.MultiLine = true
 	FileEditor.TextXAlignment = Enum.TextXAlignment.Left
 	FileEditor.TextYAlignment = Enum.TextYAlignment.Top
-	FileEditor.TextSize = TEXT_SIZE
 	FileEditor.TextWrapped = true
-	FileEditor.Parent = Frame
+	FileEditor.Parent = ScrollingFrame
 	EditorMaid(FileEditor)
+
+	FileEditor:GetPropertyChangedSignal("Text"):Connect(function()
+		local textSize = TextService:GetTextSize(FileEditor.Text, FileEditor.TextSize, FileEditor.Font, FileEditor.AbsoluteSize)
+		FileEditor.Size = UDim2.new(1, 0, 0, textSize.Y + 50)
+		ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, textSize.Y + 50)
+	end)
 
 	local function setFileSource()
 		local File = getSelectedFile()
