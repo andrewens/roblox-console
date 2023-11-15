@@ -10,20 +10,22 @@ local RobloxCSS = require(ReplicatedStorage:FindFirstChild("roblox-css"))
 
 local LocalPlayer = Players.LocalPlayer
 
--- state
-local function file(fileName, text)
-	return ProxyTable({
-		Name = fileName,
-		Source = text,
-	})
-end
-local AppState = ProxyTable({
-	Files = ProxyTable({
-		file(
-			"stylesheet-demo.rcss",
-			[[return function(RBXClass, CustomClass, CustomProperty)
-	-- if your file name ends in ".rcss", it will be interpreted as a stylesheet
-
+-- default program source
+local helloWorldProgram = [[
+-- command line applications take Console as first arg, then all args passed from command line
+return function(Console, ...)
+	Console.output("Hi mom!", ...)
+end]]
+local addTwoNumsProgram = [[
+-- command line applications take Console as first arg, then all args passed from command line
+return function(Console, a, b, ...)
+	a = tonumber(a)
+	b = tonumber(b)
+	Console.output(a + b)
+end]]
+local stylesheetDemo = [[
+-- if your file name ends in ".rcss", it will be interpreted as a stylesheet
+return function(RBXClass, CustomClass, CustomProperty)
 	local TextStyle = {
 		TextColor3 = "white",
 		BackgroundColor3 = "black",
@@ -52,17 +54,56 @@ local AppState = ProxyTable({
 	end
 	CustomProperty.BackgroundColor3(customColor3)
 	CustomProperty.TextColor3(customColor3)
-end]]),
-		file("hello-world", [[return function(Console, ...)
-	-- command line applications take Console as first arg, then all args passed from command line
-	Console.output("Hi mom!")
-end]]),
-		file("add", [[return function(Console, a, b, ...)
-	-- command line applications take Console as first arg, then all args passed from command line
-	a = tonumber(a)
-	b = tonumber(b)
-	Console.output(a + b)
-end]]),
+end]]
+local paddingStylesheet = [[
+return function(RBX, Custom, Property)
+
+	RBX.Frame {
+		Padding = 5
+	}
+	RBX.ScrollingFrame {
+		PaddingRight = 15, -- for scroll bar
+	}
+
+	local function customPadding(Inst, property, value)
+		local Padding = Inst:FindFirstChildWhichIsA("UIPadding")
+		if Padding == nil then
+			Padding = Instance.new("UIPadding")
+			Padding.Parent = Inst
+		end
+
+		if property == "Padding" then
+			Padding.PaddingLeft = UDim.new(0, value)
+			Padding.PaddingRight = UDim.new(0, value)
+			Padding.PaddingBottom = UDim.new(0, value)
+			Padding.PaddingTop = UDim.new(0, value)
+			return
+		end
+
+		Padding[property] = UDim.new(0, value)
+	end
+
+	Property.Padding(customPadding)
+	Property.PaddingLeft(customPadding)
+	Property.PaddingRight(customPadding)
+	Property.PaddingTop(customPadding)
+	Property.PaddingBottom(customPadding)
+end
+]]
+
+-- state
+local function file(fileName, text)
+	return ProxyTable({
+		Name = fileName,
+		Source = text,
+	})
+end
+local AppState = ProxyTable({
+	Files = ProxyTable({
+		file("hello-world", helloWorldProgram),
+		file("add", addTwoNumsProgram),
+		file("stylesheet-demo.rcss", stylesheetDemo),
+		file("padding.rcss", paddingStylesheet),
 	}),
 	SelectedFile = 1,
 })
@@ -111,7 +152,7 @@ local function console(Frame, updateStyleSheets)
 		for i, File in AppState.Files do
 			-- can't have two programs with the same name
 			if Programs[File.Name] then
-				ConsoleInterface.output("Attempt to define program \"" .. File.Name .. "\" multiple times")
+				ConsoleInterface.output('Attempt to define program "' .. File.Name .. '" multiple times')
 				continue
 			end
 
@@ -311,7 +352,8 @@ local function textEditor(Frame)
 	EditorMaid(FileEditor)
 
 	FileEditor:GetPropertyChangedSignal("Text"):Connect(function()
-		local textSize = TextService:GetTextSize(FileEditor.Text, FileEditor.TextSize, FileEditor.Font, FileEditor.AbsoluteSize)
+		local textSize =
+			TextService:GetTextSize(FileEditor.Text, FileEditor.TextSize, FileEditor.Font, FileEditor.AbsoluteSize)
 		FileEditor.Size = UDim2.new(1, 0, 0, textSize.Y + 50)
 		ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, textSize.Y + 50)
 	end)
