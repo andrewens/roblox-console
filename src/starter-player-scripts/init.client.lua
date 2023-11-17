@@ -3,6 +3,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TextService = game:GetService("TextService")
 local StarterGui = game:GetService("StarterGui")
+local UserInputService = game:GetService("UserInputService")
 
 local Maid = require(script:FindFirstChild("Maid"))
 local ProxyTable = require(script:FindFirstChild("ProxyTable"))
@@ -153,6 +154,118 @@ local function newFile()
 end
 
 -- gui objects
+local function TextBuffer(str)
+	--[[
+		Data structure to manage cursor position while editing a big block of text
+		@param: string? str
+	]]
+	local strBuffer = str or ""
+	local cursorPosition = string.len(strBuffer)
+
+	-- public
+	local function addText(newText)
+		strBuffer = string.sub(strBuffer, 1, cursorPosition) .. newText .. string.sub(strBuffer, cursorPosition + 1, -1)
+		cursorPosition += string.len(newText)
+	end
+	local function buffer(newStr)
+		if newStr then
+			strBuffer = newStr
+			cursorPosition = math.min(string.len(newStr), cursorPosition)
+		end
+		return strBuffer
+	end
+	local function countLines()
+		local numLines = 0
+		for _ in string.gmatch(strBuffer, "\n") do
+			numLines += 1
+		end
+		return numLines
+	end
+
+	return {
+		addText = addText,
+		buffer = buffer,
+		countLines = countLines,
+	}
+end
+local function TextBox(ScrollingFrame, str, ColorCode)
+    --[[
+        @param: ScrollingFrame
+        @param: string? str
+        @param: table ColorCode
+            { [Color3] --> { string word } }
+    ]]
+	local TextBoxMaid = Maid()
+	local TextBoxBuffer = TextBuffer()
+
+	local TextLabel = Instance.new("TextLabel")
+	TextLabel.Size = UDim2.new(1, 0, 1, -ScrollingFrame.ScrollBarThickness)
+	TextLabel.TextXAlignment = Enum.TextXAlignment.Left
+	TextLabel.TextYAlignment = Enum.TextYAlignment.Top
+	TextLabel.TextWrapped = true
+	TextLabel.Text = TextBoxBuffer.buffer()
+    TextLabel.RichText = true
+	TextLabel.Parent = ScrollingFrame
+	TextBoxMaid(TextLabel)
+
+	ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, TextLabel.TextBounds.Y)
+
+    local inputText
+    if ColorCode then
+        -- remap color code
+		local RichTextColors = {}
+        for color3, words in ColorCode do
+			print("COLOR#", color3, typeof(color3))
+            local r = tostring(math.round(color3.R * 255))
+            local g = tostring(math.round(color3.G * 255))
+            local b = tostring(math.round(color3.B * 255))
+            local strColor3 = '<font color="rgb(' .. r .. "," .. g .. "," .. b .. ')">'
+            for _, word in words do
+                RichTextColors[word] = strColor3 -- it's so inefficient... I'm sorry T_T
+            end
+        end
+
+        -- apply color code when adding text
+        function inputText(text)
+            TextBoxBuffer.addText(text)
+
+            text = ""
+            for _, line in string.split(TextBoxBuffer.buffer(), "\n") do
+                for _, word in string.split(line, " ") do
+                    local color = RichTextColors[word]
+                    if color then
+                        text = text .. color .. word .. "</font> "
+                    else
+                        text = text .. word .. " "
+                    end
+                end
+                text = text .. "\n"
+            end
+            TextLabel.Text = text
+        end
+    else
+        function inputText(text)
+            TextBoxBuffer.addText(text)
+            TextLabel.Text = TextBoxBuffer.buffer()
+        end
+    end
+	inputText(str)
+
+	-- A sample function providing one usage of InputBegan
+	local function onInputBegan(input, _gameProcessed)
+		if input.UserInputType == Enum.UserInputType.Keyboard then
+			if input.KeyCode == Enum.KeyCode.Return then
+                inputText("\n")
+            else
+                inputText(string.char(input.KeyCode.Value))
+            end
+		end
+	end
+	TextBoxMaid(UserInputService.InputBegan:Connect(onInputBegan))
+
+	return TextBoxMaid
+end
+
 local function console(Frame, updateStyleSheets)
 	local ConsoleMaid = Maid()
 
@@ -515,6 +628,17 @@ local function guiMain(Parent)
 	Browser.Size = UDim2.new(0.2, 0, 1, 0)
 	Browser.Parent = ScreenGui
 	GuiMaid(fileBrowser(Browser))
+
+	-- TEST TEST TEST TEST --
+	local ScrollingFrame = Instance.new("ScrollingFrame")
+	ScrollingFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+	ScrollingFrame.Size = UDim2.new(0, 400, 0, 400)
+	ScrollingFrame.Parent = ScreenGui
+	GuiMaid(TextBox(ScrollingFrame, "test\ntest\ntest", {
+		[Color3.new(1, 0, 0)] = {
+			"test"
+		}
+	}))
 
 	return GuiMaid
 end
