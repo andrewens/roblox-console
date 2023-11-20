@@ -12,6 +12,12 @@ local Terminal = require(ReplicatedStorage:FindFirstChild("roblox-console"))
 local LocalPlayer = Players.LocalPlayer
 
 -- default program source
+local defaultFileName = "NewFile"
+local defaultNewProgram = [[
+return function(Console)
+	Console.output("\nHello world!")
+end
+]]
 local readMeProgram = [[
 return function(Console, ...)
 	-- the terminal/command line is
@@ -71,10 +77,25 @@ end
 ]]
 local addTwoNumsProgram = [[
 return function(Console, a, b, ...)
+	-- `a` and `b` are arguments from the command line
 	a = tonumber(a)
 	b = tonumber(b)
 	Console.output("\n" .. tostring(a + b))
 end]]
+local commandProgram = [[
+return function(Console, ...)
+	-- if you run this, it invokes
+	-- the add two numbers program
+	Console.command("add 5 12")
+end
+]]
+local clearProgram = [[
+return function(Console, ...)
+	-- this clears all text
+	-- from the terminal
+	Console.clear()
+end
+]]
 local frameStylesheet = [[
 	-- if your file name ends in ".rcss", 
 	-- it will be interpreted as a stylesheet
@@ -195,6 +216,8 @@ local AppState = ProxyTable({
 		file("hello-world", helloWorldProgram),
 		file("input-test", inputProgram),
 		file("add", addTwoNumsProgram),
+		file("testCmd", commandProgram),
+		file("clear", clearProgram),
 		file("READ_ME", readMeProgram),
 		file("frames.rcss", frameStylesheet),
 		file("text.rcss", textStylesheet),
@@ -212,7 +235,7 @@ local function selectFile(fileIndex)
 	AppState.SelectedFile = fileIndex
 end
 local function newFile()
-	AppState.Files[#AppState.Files + 1] = file("NewFile", "return function()\n\tprint('hello world')\nend\n")
+	AppState.Files[#AppState.Files + 1] = file(defaultFileName, defaultNewProgram)
 end
 local function compilePrograms(Console)
 	CompileMaid:DoCleaning()
