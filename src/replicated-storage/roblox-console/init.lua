@@ -22,28 +22,54 @@ local function terminal(ScrollingFrame, Programs)
 	local readOnlyText = ""
 	local readOnlyLength = 0
 
-	-- Console interface
+	-- private
+	local function resizeTextBox()
+		local textHeight = TextBox.TextBounds.Y + NUM_EXTRA_LINES * TextBox.TextSize
+		TextBox.Size = UDim2.new(1, 0, 0, textHeight)
+		ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, textHeight)
+		ScrollingFrame.CanvasPosition = Vector2.new(0, textHeight)
+	end
+	local function cursorPositionChanged()
+		-- disallow moving cursor into existing output
+		if TextBox.CursorPosition > 0 and TextBox.CursorPosition < readOnlyLength + 2 then
+			TextBox.CursorPosition = readOnlyLength + 2
+			TextBox:CaptureFocus()
+		end
+	end
+	local function textChanged()
+		-- disallow deleting existing output
+		if string.len(TextBox.Text) < readOnlyLength then
+			TextBox.Text = readOnlyText
+		end
+	end
+
+	-- public | Console interface
+	local Console
 	local function output(text)
 		--[[
 			@param: string text
 			@post: renders text in Terminal
+			@post: updates TextBox size & ScrollingFrame canvas size / position
+			@return: string text (the same as the argument)
 		]]
 
-		local textHeight = TextBox.TextBounds.Y + NUM_EXTRA_LINES * TextBox.TextSize
+		-- set text / cursor position
 		readOnlyText = readOnlyText .. text
 		readOnlyLength = string.len(readOnlyText)
-
 		TextBox.Text = readOnlyText
 		TextBox.CursorPosition = readOnlyLength + 1
-		TextBox.Size = UDim2.new(1, 0, 0, textHeight)
-		ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, textHeight)
-		ScrollingFrame.CanvasPosition = Vector2.new(0, textHeight)
+
+		-- adjust size
+		resizeTextBox()
+
+		return text
 	end
 	local function input(prompt)
 		--[[
 			@param: string prompt
 			@post: outputs prompt to screen
 			@post: yields until return is pressed
+			@return: string userInput
 		]]
 
 		local enterPressed = false
@@ -72,70 +98,79 @@ local function terminal(ScrollingFrame, Programs)
 
 		return userInput
 	end
-	local Console = {
-		input = input,
-		output = output,
-	}
+	local function command(args)
+		--[[
+			@param: string args
+			@post: executes the program named the same as the first arg (separated by space)
+			@return: string | nil errorMessage
+		]]
 
-	-- terminal functions
-	local function cursorPositionChanged()
-		-- disallow moving cursor into existing output
-		if TextBox.CursorPosition > 0 and TextBox.CursorPosition < readOnlyLength + 2 then
-			TextBox.CursorPosition = readOnlyLength + 2
-			TextBox:CaptureFocus()
-		end
-	end
-	local function textChanged()
-		-- disallow deleting existing output
-		if string.len(TextBox.Text) < readOnlyLength then
-			TextBox.Text = readOnlyText
-		end
-	end
-	local function commandLine(prompt)
-		local args = Console.input(prompt)
 		args = string.split(args, " ")
 		local commandName = args[1]
-
 		if Programs[commandName] then
 			table.remove(args, 1)
 			local s, msg = pcall(Programs[commandName], Console, table.unpack(args))
 			if not s then
-				Console.output("\n" .. msg .. "\n")
+				return Console.output("\n" .. msg .. "\n")
 			end
 		elseif commandName ~= "" then
-			Console.output('\n"' .. commandName .. '" is not a command\n')
+			return Console.output('\n"' .. commandName .. '" is not a command\n')
 		end
 	end
-	local function init()
-		TextBox = Instance.new("TextBox")
-		TextBox.Size = UDim2.new(1, 0, 1, 0)
-		TextBox.Font = Enum.Font.Code
-		TextBox.ClearTextOnFocus = false
-		TextBox:SetAttribute("class", "ConsoleText")
-		TextBox.TextWrapped = true
-		TextBox.TextXAlignment = Enum.TextXAlignment.Left
-		TextBox.TextYAlignment = Enum.TextYAlignment.Top
-		TextBox.Text = ""
-		TextBox.Parent = ScrollingFrame
-		TerminalMaid(TextBox)
-
-		TextBox:GetPropertyChangedSignal("Text"):Connect(textChanged)
-		TextBox:GetPropertyChangedSignal("CursorPosition"):Connect(cursorPositionChanged)
-
-		TerminalMaid(function()
-			terminalIsRunning = false
-		end)
-
-		task.spawn(function()
-			while terminalIsRunning do
-				commandLine("\n" .. LocalPlayer.Name .. " > ")
-				task.wait()
-			end
-		end)
+	local function destroy()
+		--[[
+			@post: Terminal GUI no longer exists
+		]]
+		TerminalMaid:DoCleaning()
+	end
+	local function clear()
+		--[[
+			@post: clear all text from terminal
+		]]
+		readOnlyText = ""
+		readOnlyLength = 0
+		resizeTextBox()
 	end
 
-	init()
+	Console = {
+		input = input,
+		output = output,
+		command = command,
+		clear = clear,
+		destroy = destroy,
+		Destroy = destroy, -- in case someone uses Quenty's Maid implementation
+	}
 
-	return TerminalMaid
+	-- initialize the terminal
+	TerminalMaid(InputMaid)
+
+	TextBox = Instance.new("TextBox")
+	TextBox.Size = UDim2.new(1, 0, 1, 0)
+	TextBox.Font = Enum.Font.Code
+	TextBox.ClearTextOnFocus = false
+	TextBox:SetAttribute("class", "ConsoleText")
+	TextBox.TextWrapped = true
+	TextBox.TextXAlignment = Enum.TextXAlignment.Left
+	TextBox.TextYAlignment = Enum.TextYAlignment.Top
+	TextBox.Text = ""
+	TextBox.Parent = ScrollingFrame
+	TerminalMaid(TextBox)
+
+	TextBox:GetPropertyChangedSignal("Text"):Connect(textChanged)
+	TextBox:GetPropertyChangedSignal("CursorPosition"):Connect(cursorPositionChanged)
+
+	TerminalMaid(function()
+		terminalIsRunning = false
+	end)
+
+	task.spawn(function()
+		while terminalIsRunning do
+			local args = input("\n" .. LocalPlayer.Name .. " > ")
+			command(args)
+			task.wait()
+		end
+	end)
+
+	return Console
 end
 return terminal
