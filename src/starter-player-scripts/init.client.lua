@@ -154,194 +154,164 @@ end
 
 -- gui objects
 local function console(Frame, updateStyleSheets)
+	-- var
 	local ConsoleMaid = Maid()
-
-	local ConsoleInterface
-
-	local PROGRAM_DESC = {
-		clear = " -- Clears all text from console",
-		save = " -- Compiles program files & updates GUI style",
-		help = " -- Lists all programs",
+	local ActualPrograms = {
+		test = function(Console)
+			Console.output("\ntest")
+		end,
+		test2 = function(Console)
+			local name = Console.input("\nwhat is your name? ")
+			Console.output("\nNice to meet you, " .. name)
+		end,
+		test3 = function(Console)
+			error("Test error")
+		end
 	}
 
-	local Programs = {}
-	local StyleSheets = {}
-	local function updatePrograms()
-		Programs = {
-			clear = function(CLI)
-				CLI.clear()
-			end,
-			save = updatePrograms,
-			help = function(CLI)
-				for programName, _ in Programs do
-					CLI.output(programName .. (PROGRAM_DESC[programName] or ""))
-				end
-			end,
-		}
-		StyleSheets = {}
-		for i, File in AppState.Files do
-			-- can't have two programs with the same name
-			if Programs[File.Name] then
-				ConsoleInterface.output('Attempt to define program "' .. File.Name .. '" multiple times')
-				continue
-			end
+	-- private
+	local function terminal(ScrollingFrame, Programs)
+		--[[
+			@param: ScrollingFrame
+			@param: table Programs
+				{ string commandName --> function(Console): nil }
+			@return: Maid
+		]]
 
-			-- use Loadstring to turn the File.Source (string) into a real Lua function
-			local compileProgram, failMessage = Loadstring(File.Source)
-			if failMessage then
-				ConsoleInterface.output("Error while compiling " .. File.Name .. ": " .. tostring(failMessage))
-				continue
-			end
+		-- const
+		local NUM_EXTRA_LINES = 6
 
-			-- kinda meta, but the function has to return a function which is the actual command line program or rcss stylesheet
-			local s, program = pcall(compileProgram)
-			if not s then
-				ConsoleInterface.output("Error while compiling " .. File.Name .. ": " .. tostring(program))
-				continue
-			end
-			if typeof(program) ~= "function" then
-				ConsoleInterface.output("File " .. File.Name .. " failed to return a function")
-				continue
-			end
+		-- var
+		local TerminalMaid = Maid()
+		local InputMaid = Maid()
+		local terminalIsRunning = true
+		local TextBox
 
-			-- if file name ends in .rcss, it's a stylesheet
-			if string.sub(File.Name, string.len(File.Name) - 4, -1) == ".rcss" then
-				table.insert(StyleSheets, program)
-				continue
-			end
+		local readOnlyText = ""
+		local readOnlyLength = 0
 
-			-- normal command line program
-			Programs[File.Name] = program
+		-- private
+		local function cursorPositionChanged()
+			-- disallow moving cursor into existing output
+			if TextBox.CursorPosition > 0 and TextBox.CursorPosition < readOnlyLength + 2 then
+				TextBox.CursorPosition = readOnlyLength + 2
+				TextBox:CaptureFocus()
+			end
+		end
+		local function textChanged()
+			-- disallow deleting existing output
+			if string.len(TextBox.Text) < readOnlyLength then
+				TextBox.Text = readOnlyText
+			end
 		end
 
-		updateStyleSheets(StyleSheets)
+		-- Console interface
+		local function output(text)
+			--[[
+				@param: string text
+				@post: renders text in Terminal
+			]]
+
+			local textHeight = TextBox.TextBounds.Y + NUM_EXTRA_LINES * TextBox.TextSize
+			readOnlyText = readOnlyText .. text
+			readOnlyLength = string.len(readOnlyText)
+
+			TextBox.Text = readOnlyText
+			TextBox.CursorPosition = readOnlyLength + 1
+			TextBox.Size = UDim2.new(1, 0, 0, textHeight)
+			ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, textHeight)
+			ScrollingFrame.CanvasPosition = Vector2.new(0, textHeight)
+		end
+		local function input(prompt)
+			--[[
+				@param: string prompt
+				@post: outputs prompt to screen
+				@post: yields until return is pressed
+			]]
+
+			local enterPressed = false
+			local function focusLost(...)
+				enterPressed = ...
+				TextBox:CaptureFocus()
+			end
+
+			InputMaid:DoCleaning()
+			InputMaid(TextBox.FocusLost:Connect(focusLost))
+
+			-- collect user input & wait until user presses Return
+			output(prompt)
+			while not enterPressed do
+				task.wait()
+			end
+
+			InputMaid:DoCleaning()
+
+			local userInput = string.sub(TextBox.Text, readOnlyLength + 1, -1)
+			userInput = string.gsub(userInput, "%c", "") -- sanitize the input from control characters
+			readOnlyText = readOnlyText .. userInput
+			readOnlyLength = string.len(readOnlyText)
+
+			return userInput
+		end
+
+		local Console = {
+			input = input,
+			output = output,
+		}
+
+		local function commandLine(prompt)
+			local args = Console.input(prompt)
+			args = string.split(args, " ")
+			local commandName = args[1]
+
+			if Programs[commandName] then
+				local s, msg = pcall(Programs[commandName], Console)
+				if not s then
+					Console.output("\n" .. msg)
+				end
+			elseif commandName ~= "" then
+				Console.output('\n"' .. commandName .. '" is not a command')
+			end
+		end
+		local function init()
+			TextBox = Instance.new("TextBox")
+			TextBox.Size = UDim2.new(1, 0, 1, 0)
+			TextBox.Font = Enum.Font.Code
+			TextBox.ClearTextOnFocus = false
+			TextBox:SetAttribute("class", "ConsoleText")
+			TextBox.TextWrapped = true
+			TextBox.TextXAlignment = Enum.TextXAlignment.Left
+			TextBox.TextYAlignment = Enum.TextYAlignment.Top
+			TextBox.Text = ""
+			TextBox.Parent = ScrollingFrame
+
+			TextBox:GetPropertyChangedSignal("Text"):Connect(textChanged)
+			TextBox:GetPropertyChangedSignal("CursorPosition"):Connect(cursorPositionChanged)
+
+			TerminalMaid(function()
+				terminalIsRunning = false
+			end)
+
+			task.spawn(function()
+				while terminalIsRunning do
+					commandLine("\n" .. LocalPlayer.Name .. " > ")
+					task.wait()
+				end
+			end)
+		end
+
+		init()
+
+		return TerminalMaid
 	end
 
-	local LINE_HEIGHT = 20
-	local FONT = Enum.Font.Code
-	local START_OF_LINE_SYMBOL = LocalPlayer.Name .. " > "
-	local START_OF_LINE_SYMBOL_LEN = string.len(START_OF_LINE_SYMBOL)
-	local SCROLLBAR_WIDTH = 10
-	local COMMAND_SEPARATOR_START_OF_LINE_SYMBOL = " "
-
-	local function getTextSize(str)
-		return TextService:GetTextSize(str, 12, FONT, Frame.AbsoluteSize - Vector2.new(SCROLLBAR_WIDTH, 0))
-	end
-
+	-- init
 	local ScrollingFrame = Instance.new("ScrollingFrame")
 	ScrollingFrame.Size = UDim2.new(1, 0, 1, 0)
-	ScrollingFrame.ScrollBarThickness = SCROLLBAR_WIDTH
 	ScrollingFrame.Parent = Frame
 	ConsoleMaid(ScrollingFrame)
 
-	local ListLayout = Instance.new("UIListLayout")
-	ListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-	ListLayout.Parent = ScrollingFrame
-
-	local buffer = {
-		'Welcome to the `roblox-console` demo. Type "help" to see a list of commands.',
-	}
-
-	local BufferMaid = Maid()
-
-	local function drawOutput(i)
-		local str = START_OF_LINE_SYMBOL .. buffer[i]
-		assert(str)
-		local size = getTextSize(str)
-
-		local TextLabel = Instance.new("TextLabel")
-		TextLabel.Size = UDim2.new(0, size.X, 0, size.Y + 0.5 * LINE_HEIGHT)
-		TextLabel.Text = str
-		TextLabel.LayoutOrder = i
-		TextLabel.TextYAlignment = Enum.TextYAlignment.Top
-		TextLabel.TextXAlignment = Enum.TextXAlignment.Left
-		TextLabel.TextWrapped = true
-		TextLabel:SetAttribute("class", "ConsoleText")
-		TextLabel.Parent = ScrollingFrame
-
-		BufferMaid(TextLabel)
-	end
-	local function redrawBuffer()
-		BufferMaid:DoCleaning()
-
-		for i, str in buffer do
-			drawOutput(i)
-		end
-	end
-	local function newOutput(str)
-		local i = #buffer + 1
-		table.insert(buffer, str)
-
-		drawOutput(i)
-	end
-
-	local CommandLine = Instance.new("TextBox")
-	CommandLine.Size = UDim2.new(1, 0, 0, LINE_HEIGHT)
-	CommandLine.TextXAlignment = Enum.TextXAlignment.Left
-	CommandLine.TextYAlignment = Enum.TextYAlignment.Top
-	CommandLine.LayoutOrder = 100000
-	CommandLine.ClearTextOnFocus = false
-	CommandLine.Text = START_OF_LINE_SYMBOL
-	CommandLine:SetAttribute("class", "ConsoleText")
-	CommandLine.Parent = ScrollingFrame
-
-	local commandInput = ""
-	CommandLine:GetPropertyChangedSignal("Text"):Connect(function()
-		-- disallow deleting the start of line START_OF_LINE_SYMBOL
-		if string.sub(CommandLine.Text, 1, START_OF_LINE_SYMBOL_LEN) ~= START_OF_LINE_SYMBOL then
-			CommandLine.Text = START_OF_LINE_SYMBOL .. commandInput
-			return
-		end
-
-		commandInput = string.sub(CommandLine.Text, 1 + START_OF_LINE_SYMBOL_LEN, -1)
-	end)
-	CommandLine:GetPropertyChangedSignal("CursorPosition"):Connect(function()
-		-- disallow moving cursor into start of line START_OF_LINE_SYMBOL
-		if CommandLine.CursorPosition < START_OF_LINE_SYMBOL_LEN + 1 then
-			CommandLine.CursorPosition = START_OF_LINE_SYMBOL_LEN + 1
-		end
-	end)
-
-	ConsoleInterface = {
-		output = newOutput,
-		clear = function()
-			buffer = {}
-			redrawBuffer()
-		end,
-	}
-	local function onFocusLost(enterPressed, inputThatCausedFocusLost)
-		if not enterPressed then
-			return
-		end
-
-		-- sanitize input to ignore disgusting control characters
-		commandInput = string.gsub(commandInput, "%c", "")
-
-		-- save the input to buffer
-		newOutput(commandInput)
-
-		-- run a program
-		local args = string.split(commandInput, COMMAND_SEPARATOR_START_OF_LINE_SYMBOL)
-		local selectedProgram = Programs[args[1]]
-		if selectedProgram then
-			table.remove(args, 1)
-			local s, msg = pcall(selectedProgram, ConsoleInterface, table.unpack(args))
-			if not s then
-				newOutput("Error: " .. tostring(msg))
-			end
-		elseif args[1] ~= "" then
-			newOutput('"' .. args[1] .. '" is not a command')
-		end
-
-		-- refresh command input line
-		commandInput = ""
-		CommandLine.Text = START_OF_LINE_SYMBOL
-		CommandLine:CaptureFocus()
-	end
-	CommandLine.FocusLost:Connect(onFocusLost)
-
-	redrawBuffer()
-	updatePrograms()
+	ConsoleMaid(terminal(ScrollingFrame, ActualPrograms))
 
 	return ConsoleMaid
 end
@@ -518,7 +488,5 @@ local function guiMain(Parent)
 
 	return GuiMaid
 end
-
-
 
 guiMain(LocalPlayer.PlayerGui)
