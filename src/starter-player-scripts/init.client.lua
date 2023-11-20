@@ -1,13 +1,13 @@
 -- dependency
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local TextService = game:GetService("TextService")
 local StarterGui = game:GetService("StarterGui")
 
 local Maid = require(script:FindFirstChild("Maid"))
 local ProxyTable = require(script:FindFirstChild("ProxyTable"))
 local Loadstring = require(ReplicatedStorage:FindFirstChild("Loadstring"))
 local RobloxCSS = require(ReplicatedStorage:FindFirstChild("roblox-css"))
+local Terminal = require(ReplicatedStorage:FindFirstChild("roblox-console"))
 
 local LocalPlayer = Players.LocalPlayer
 
@@ -182,7 +182,6 @@ local CompileMaid = Maid()
 local EditorGui
 local ToggleButtonGui
 local TerminalFrame
-local terminal -- this is a function
 
 -- state
 local function file(fileName, text)
@@ -260,7 +259,7 @@ local function compilePrograms(Console)
 	end
 
 	-- update the terminal
-	CompileMaid(terminal(TerminalFrame, Programs))
+	CompileMaid(Terminal(TerminalFrame, Programs))
 
 	-- update the stylesheets
 	local dismountHandle = RobloxCSS.mount(EditorGui, StyleSheets)
@@ -272,144 +271,6 @@ local function compilePrograms(Console)
 end
 
 -- gui objects
-function terminal(ScrollingFrame, Programs)
-	--[[
-		@param: ScrollingFrame
-		@param: table Programs
-			{ string commandName --> function(Console): nil }
-		@return: Maid
-	]]
-
-	-- const
-	local NUM_EXTRA_LINES = 6
-
-	-- var
-	local TerminalMaid = Maid()
-	local InputMaid = Maid()
-	local terminalIsRunning = true
-	local TextBox
-
-	local readOnlyText = ""
-	local readOnlyLength = 0
-
-	-- TextBox events
-	local function cursorPositionChanged()
-		-- disallow moving cursor into existing output
-		if TextBox.CursorPosition > 0 and TextBox.CursorPosition < readOnlyLength + 2 then
-			TextBox.CursorPosition = readOnlyLength + 2
-			TextBox:CaptureFocus()
-		end
-	end
-	local function textChanged()
-		-- disallow deleting existing output
-		if string.len(TextBox.Text) < readOnlyLength then
-			TextBox.Text = readOnlyText
-		end
-	end
-
-	-- Console interface
-	local function output(text)
-		--[[
-			@param: string text
-			@post: renders text in Terminal
-		]]
-
-		local textHeight = TextBox.TextBounds.Y + NUM_EXTRA_LINES * TextBox.TextSize
-		readOnlyText = readOnlyText .. text
-		readOnlyLength = string.len(readOnlyText)
-
-		TextBox.Text = readOnlyText
-		TextBox.CursorPosition = readOnlyLength + 1
-		TextBox.Size = UDim2.new(1, 0, 0, textHeight)
-		ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, textHeight)
-		ScrollingFrame.CanvasPosition = Vector2.new(0, textHeight)
-	end
-	local function input(prompt)
-		--[[
-			@param: string prompt
-			@post: outputs prompt to screen
-			@post: yields until return is pressed
-		]]
-
-		local enterPressed = false
-		local function focusLost(...)
-			enterPressed = ...
-			if enterPressed then
-				TextBox:CaptureFocus()
-			end
-		end
-
-		InputMaid:DoCleaning()
-		InputMaid(TextBox.FocusLost:Connect(focusLost))
-
-		-- collect user input & wait until user presses Return
-		output(prompt)
-		while not enterPressed do
-			task.wait()
-		end
-
-		InputMaid:DoCleaning()
-
-		local userInput = string.sub(TextBox.Text, readOnlyLength + 1, -1)
-		userInput = string.gsub(userInput, "%c", "") -- sanitize the input from control characters
-		readOnlyText = readOnlyText .. userInput
-		readOnlyLength = string.len(readOnlyText)
-
-		return userInput
-	end
-	local Console = {
-		input = input,
-		output = output,
-	}
-
-	-- terminal functions
-	local function commandLine(prompt)
-		local args = Console.input(prompt)
-		args = string.split(args, " ")
-		local commandName = args[1]
-
-		if Programs[commandName] then
-			table.remove(args, 1)
-			local s, msg = pcall(Programs[commandName], Console, table.unpack(args))
-			if not s then
-				Console.output("\n" .. msg)
-			end
-		elseif commandName ~= "" then
-			Console.output('\n"' .. commandName .. '" is not a command')
-		end
-	end
-	local function init()
-		TextBox = Instance.new("TextBox")
-		TextBox.Size = UDim2.new(1, 0, 1, 0)
-		TextBox.Font = Enum.Font.Code
-		TextBox.ClearTextOnFocus = false
-		TextBox:SetAttribute("class", "ConsoleText")
-		TextBox.TextWrapped = true
-		TextBox.TextXAlignment = Enum.TextXAlignment.Left
-		TextBox.TextYAlignment = Enum.TextYAlignment.Top
-		TextBox.Text = ""
-		TextBox.Parent = ScrollingFrame
-		TerminalMaid(TextBox)
-
-		TextBox:GetPropertyChangedSignal("Text"):Connect(textChanged)
-		TextBox:GetPropertyChangedSignal("CursorPosition"):Connect(cursorPositionChanged)
-
-		TerminalMaid(function()
-			terminalIsRunning = false
-		end)
-
-		task.spawn(function()
-			while terminalIsRunning do
-				commandLine("\n" .. LocalPlayer.Name .. " > ")
-				task.wait()
-			end
-		end)
-	end
-
-	init()
-
-	return TerminalMaid
-end
 local function textEditor(Frame)
 	local EditorMaid = Maid()
 

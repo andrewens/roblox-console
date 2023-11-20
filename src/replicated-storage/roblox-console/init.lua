@@ -1,54 +1,141 @@
-local DEFAULT_TEXT_SIZE = 12
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local Maid = require(script:FindFirstChild("Maid"))
 
-local function commandLineInterface(Programs, GuiFrame, textSize)
-    --[[
-        @param: table Programs
-            - { [int i] --> ModuleScript }
-            - { [int i] --> Folder }
-            - { string programName --> function(CLI, ...): nil }
-        @param: Frame? GuiFrame
-        @param: int? textSize
-        @return: table CLI
-    ]]
+local function terminal(ScrollingFrame, Programs)
+	--[[
+		@param: ScrollingFrame
+		@param: table Programs
+			{ string commandName --> function(Console): nil }
+		@return: Maid
+	]]
 
-    -- extract programs
-    local ALL_PROGRAMS = {} -- string programName --> function(CLI, ...): nil
+	-- const
+	local NUM_EXTRA_LINES = 6
 
-    -- define command line interface
-    local buffer = {}
-    local function input(questionStr)
-        local userInput = ""
+	-- var
+	local TerminalMaid = Maid()
+	local InputMaid = Maid()
+	local terminalIsRunning = true
+	local TextBox
 
-        return userInput
-    end
-    local function output(str)
-        table.insert(buffer, str)
-    end
-    local function clear()
-        buffer = {}
-    end
-    local function command(inputStr)
+	local readOnlyText = ""
+	local readOnlyLength = 0
 
-    end
-    local function destroy()
-        clear()
-    end
-    local self = {
-        buffer = buffer,
+	-- Console interface
+	local function output(text)
+		--[[
+			@param: string text
+			@post: renders text in Terminal
+		]]
 
-        input = input,
-        output = output,
-        clear = clear,
-        command = command,
-        destroy = destroy,
-    }
+		local textHeight = TextBox.TextBounds.Y + NUM_EXTRA_LINES * TextBox.TextSize
+		readOnlyText = readOnlyText .. text
+		readOnlyLength = string.len(readOnlyText)
 
-    -- build gui
-    if GuiFrame then
-        textSize = textSize or DEFAULT_TEXT_SIZE
-    end
+		TextBox.Text = readOnlyText
+		TextBox.CursorPosition = readOnlyLength + 1
+		TextBox.Size = UDim2.new(1, 0, 0, textHeight)
+		ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, textHeight)
+		ScrollingFrame.CanvasPosition = Vector2.new(0, textHeight)
+	end
+	local function input(prompt)
+		--[[
+			@param: string prompt
+			@post: outputs prompt to screen
+			@post: yields until return is pressed
+		]]
 
-    return self
+		local enterPressed = false
+		local function focusLost(...)
+			enterPressed = ...
+			if enterPressed then
+				TextBox:CaptureFocus()
+			end
+		end
+
+		InputMaid:DoCleaning()
+		InputMaid(TextBox.FocusLost:Connect(focusLost))
+
+		-- collect user input & wait until user presses Return
+		output(prompt)
+		while not enterPressed do
+			task.wait()
+		end
+
+		InputMaid:DoCleaning()
+
+		local userInput = string.sub(TextBox.Text, readOnlyLength + 1, -1)
+		userInput = string.gsub(userInput, "%c", "") -- sanitize the input from control characters
+		readOnlyText = readOnlyText .. userInput
+		readOnlyLength = string.len(readOnlyText)
+
+		return userInput
+	end
+	local Console = {
+		input = input,
+		output = output,
+	}
+
+	-- terminal functions
+	local function cursorPositionChanged()
+		-- disallow moving cursor into existing output
+		if TextBox.CursorPosition > 0 and TextBox.CursorPosition < readOnlyLength + 2 then
+			TextBox.CursorPosition = readOnlyLength + 2
+			TextBox:CaptureFocus()
+		end
+	end
+	local function textChanged()
+		-- disallow deleting existing output
+		if string.len(TextBox.Text) < readOnlyLength then
+			TextBox.Text = readOnlyText
+		end
+	end
+	local function commandLine(prompt)
+		local args = Console.input(prompt)
+		args = string.split(args, " ")
+		local commandName = args[1]
+
+		if Programs[commandName] then
+			table.remove(args, 1)
+			local s, msg = pcall(Programs[commandName], Console, table.unpack(args))
+			if not s then
+				Console.output("\n" .. msg .. "\n")
+			end
+		elseif commandName ~= "" then
+			Console.output('\n"' .. commandName .. '" is not a command\n')
+		end
+	end
+	local function init()
+		TextBox = Instance.new("TextBox")
+		TextBox.Size = UDim2.new(1, 0, 1, 0)
+		TextBox.Font = Enum.Font.Code
+		TextBox.ClearTextOnFocus = false
+		TextBox:SetAttribute("class", "ConsoleText")
+		TextBox.TextWrapped = true
+		TextBox.TextXAlignment = Enum.TextXAlignment.Left
+		TextBox.TextYAlignment = Enum.TextYAlignment.Top
+		TextBox.Text = ""
+		TextBox.Parent = ScrollingFrame
+		TerminalMaid(TextBox)
+
+		TextBox:GetPropertyChangedSignal("Text"):Connect(textChanged)
+		TextBox:GetPropertyChangedSignal("CursorPosition"):Connect(cursorPositionChanged)
+
+		TerminalMaid(function()
+			terminalIsRunning = false
+		end)
+
+		task.spawn(function()
+			while terminalIsRunning do
+				commandLine("\n" .. LocalPlayer.Name .. " > ")
+				task.wait()
+			end
+		end)
+	end
+
+	init()
+
+	return TerminalMaid
 end
-
-return commandLineInterface
+return terminal
