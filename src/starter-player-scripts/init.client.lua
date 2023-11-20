@@ -12,6 +12,49 @@ local RobloxCSS = require(ReplicatedStorage:FindFirstChild("roblox-css"))
 local LocalPlayer = Players.LocalPlayer
 
 -- default program source
+local readMeProgram = [[
+return function(Console, ...)
+	-- the terminal/command line is
+	-- the green text on the left.
+
+	-- type 'save' or 'compile' to
+	-- compile these program files
+	-- in the terminal.
+
+	-- type a file name in the terminal
+	-- to run it. files must return a
+	-- function which takes the Console
+	-- as the first parameter, and the
+	-- terminal arguments (separated by
+	-- spaces) as the rest of the
+	-- parameters.
+
+	-- to output all command line args
+	-- to the terminal, do:
+
+	Console.output(...)
+
+	-- to get user input from the terminal
+	-- (which yields) do
+
+	local userInput = Console.input("Type some stuff & press enter")
+
+	-- userinput will be a string, and you
+	-- can output it back to the Console:
+
+	Console.output(userInput)
+
+	-- you can edit the file name at the
+	-- top of this editor. If your file 
+	-- name ends with ".rcss", it will be
+	-- interpreted as a Roblox CSS
+	-- stylesheet and applied to this 
+	-- editor GUI. You can see the existing
+	-- styles in all of the existing .rcss
+	-- files in the file explorer to the
+	-- right.
+end
+]]
 local helloWorldProgram = [[
 -- to run this program,
 -- type "hello-world" in the terminal
@@ -153,6 +196,7 @@ local AppState = ProxyTable({
 		file("hello-world", helloWorldProgram),
 		file("input-test", inputProgram),
 		file("add", addTwoNumsProgram),
+		file("READ_ME", readMeProgram),
 		file("frames.rcss", frameStylesheet),
 		file("text.rcss", textStylesheet),
 		file("colorNames.rcss", customColorsStylesheet),
