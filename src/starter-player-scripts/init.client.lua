@@ -13,50 +13,58 @@ local LocalPlayer = Players.LocalPlayer
 
 -- default program source
 local helloWorldProgram = [[
--- command line applications take Console as first arg, then all args passed from command line
+-- to run this program,
+-- type "hello-world" in the terminal
+-- (no quotes) and press enter
 
 return function(Console, ...)
-
-	Console.output("Hi mom! " .. table.concat({...}, " "))
-
+	Console.output("\nHi mom!")
 end]]
+local inputProgram = [[
+return function(Console, ...)
+	local name = Console.input("\nWhat is your name? ")
+	Console.output("\nNice to meet you, " .. name)
+end
+]]
 local addTwoNumsProgram = [[
--- command line applications take Console as first arg, then all args passed from command line
-
 return function(Console, a, b, ...)
-
 	a = tonumber(a)
 	b = tonumber(b)
-	Console.output(a + b)
-
+	Console.output("\n" .. tostring(a + b))
 end]]
-local stylesheetDemo = [[
--- if your file name ends in ".rcss", it will be interpreted as a stylesheet
+local frameStylesheet = [[
+	-- if your file name ends in ".rcss", 
+	-- it will be interpreted as a stylesheet
 
+	return function(RBXClass, CustomClass, CustomProperty)
+		RBXClass.Frame {
+			BorderSizePixel = 0,
+			BackgroundColor3 = "black",
+		}
+		RBXClass.ScrollingFrame {
+			BorderSizePixel = 0,
+			BackgroundColor3 = "black",
+			ScrollBarThickness = 8,
+		}
+	end
+]]
+local textStylesheet = [[
 return function(RBXClass, CustomClass, CustomProperty)
-
-	RBXClass.Frame {
-		BorderSizePixel = 0,
-		BackgroundColor3 = "black",
-	}
-	RBXClass.ScrollingFrame {
-		BorderSizePixel = 0,
-		BackgroundColor3 = "black",
-		ScrollBarThickness = 8,
-	}
 
 	local TextStyle = {
 		TextColor3 = "white",
 		BackgroundColor3 = "black",
 		BorderSizePixel = 0,
-		TextXAlignment = Enum.TextXAlignment.Left
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextSize = 16,
+		Font = Enum.Font.Code,
 	}
 	RBXClass.TextLabel(TextStyle)
 	RBXClass.TextBox(TextStyle)
 	RBXClass.TextButton(TextStyle)
 
-	-- these custom classes are defined in the actual source code for this editor
-	-- using something like MyTextLabel:SetAttribute("class", "FileName")
+	-- custom classes are applied using Attributes
+	-- e.g. MyTextLabel:SetAttribute("class", "CustomClassName")
 
 	CustomClass.FileName {
 		TextColor3 = "white"
@@ -71,9 +79,11 @@ return function(RBXClass, CustomClass, CustomProperty)
 	CustomClass.FileEditor {
 		TextColor3 = "orange",
 	}
-
-	-- CustomProperties allow us to define Color3's in terms of strings
-
+end
+]]
+local customColorsStylesheet = [[
+-- CustomProperties allow us to define Color3's in terms of strings
+return function(RBX, Custom, Property)
 	local COLOR_PALETTE = {
 		white = Color3.new(1, 1, 1),
 		black = Color3.new(0.1, 0.1, 0.1),
@@ -83,8 +93,8 @@ return function(RBXClass, CustomClass, CustomProperty)
 	local function customColor3(RBXInstance, property, value)
 		RBXInstance[property] = COLOR_PALETTE[value] or value
 	end
-	CustomProperty.BackgroundColor3(customColor3)
-	CustomProperty.TextColor3(customColor3)
+	Property.BackgroundColor3(customColor3)
+	Property.TextColor3(customColor3)
 end
 ]]
 local paddingStylesheet = [[
@@ -94,7 +104,7 @@ return function(RBX, Custom, Property)
 		Padding = 5
 	}
 	RBX.ScrollingFrame {
-		PaddingRight = 15, -- for scroll bar
+		PaddingRight = 15, -- allow space for scroll bar
 	}
 
 	local function customPadding(Inst, property, value)
@@ -124,6 +134,13 @@ return function(RBX, Custom, Property)
 end
 ]]
 
+-- variables
+local CompileMaid = Maid()
+local EditorGui
+local ToggleButtonGui
+local TerminalFrame
+local terminal -- this is a function
+
 -- state
 local function file(fileName, text)
 	return ProxyTable({
@@ -134,8 +151,11 @@ end
 local AppState = ProxyTable({
 	Files = ProxyTable({
 		file("hello-world", helloWorldProgram),
+		file("input-test", inputProgram),
 		file("add", addTwoNumsProgram),
-		file("stylesheet-demo.rcss", stylesheetDemo),
+		file("frames.rcss", frameStylesheet),
+		file("text.rcss", textStylesheet),
+		file("colorNames.rcss", customColorsStylesheet),
 		file("padding.rcss", paddingStylesheet),
 	}),
 	SelectedFile = 1,
@@ -151,169 +171,200 @@ end
 local function newFile()
 	AppState.Files[#AppState.Files + 1] = file("NewFile", "return function()\n\tprint('hello world')\nend\n")
 end
+local function compilePrograms(Console)
+	CompileMaid:DoCleaning()
 
--- gui objects
-local function console(Frame, updateStyleSheets)
-	-- var
-	local ConsoleMaid = Maid()
-	local ActualPrograms = {
-		test = function(Console)
-			Console.output("\ntest")
-		end,
-		test2 = function(Console)
-			local name = Console.input("\nwhat is your name? ")
-			Console.output("\nNice to meet you, " .. name)
-		end,
-		test3 = function(Console)
-			error("Test error")
-		end
+	local Programs = {
+		compile = compilePrograms,
+		save = compilePrograms,
+		update = compilePrograms,
 	}
-
-	-- private
-	local function terminal(ScrollingFrame, Programs)
-		--[[
-			@param: ScrollingFrame
-			@param: table Programs
-				{ string commandName --> function(Console): nil }
-			@return: Maid
-		]]
-
-		-- const
-		local NUM_EXTRA_LINES = 6
-
-		-- var
-		local TerminalMaid = Maid()
-		local InputMaid = Maid()
-		local terminalIsRunning = true
-		local TextBox
-
-		local readOnlyText = ""
-		local readOnlyLength = 0
-
-		-- private
-		local function cursorPositionChanged()
-			-- disallow moving cursor into existing output
-			if TextBox.CursorPosition > 0 and TextBox.CursorPosition < readOnlyLength + 2 then
-				TextBox.CursorPosition = readOnlyLength + 2
-				TextBox:CaptureFocus()
-			end
-		end
-		local function textChanged()
-			-- disallow deleting existing output
-			if string.len(TextBox.Text) < readOnlyLength then
-				TextBox.Text = readOnlyText
-			end
+	local StyleSheets = {}
+	for i, File in AppState.Files do
+		-- can't have two programs with the same name
+		if Programs[File.Name] then
+			Console.output('\nAttempt to define program "' .. File.Name .. '" multiple times')
+			continue
 		end
 
-		-- Console interface
-		local function output(text)
-			--[[
-				@param: string text
-				@post: renders text in Terminal
-			]]
-
-			local textHeight = TextBox.TextBounds.Y + NUM_EXTRA_LINES * TextBox.TextSize
-			readOnlyText = readOnlyText .. text
-			readOnlyLength = string.len(readOnlyText)
-
-			TextBox.Text = readOnlyText
-			TextBox.CursorPosition = readOnlyLength + 1
-			TextBox.Size = UDim2.new(1, 0, 0, textHeight)
-			ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, textHeight)
-			ScrollingFrame.CanvasPosition = Vector2.new(0, textHeight)
-		end
-		local function input(prompt)
-			--[[
-				@param: string prompt
-				@post: outputs prompt to screen
-				@post: yields until return is pressed
-			]]
-
-			local enterPressed = false
-			local function focusLost(...)
-				enterPressed = ...
-				TextBox:CaptureFocus()
-			end
-
-			InputMaid:DoCleaning()
-			InputMaid(TextBox.FocusLost:Connect(focusLost))
-
-			-- collect user input & wait until user presses Return
-			output(prompt)
-			while not enterPressed do
-				task.wait()
-			end
-
-			InputMaid:DoCleaning()
-
-			local userInput = string.sub(TextBox.Text, readOnlyLength + 1, -1)
-			userInput = string.gsub(userInput, "%c", "") -- sanitize the input from control characters
-			readOnlyText = readOnlyText .. userInput
-			readOnlyLength = string.len(readOnlyText)
-
-			return userInput
+		-- use Loadstring to turn the File.Source (string) into a real Lua function
+		local compileProgram, failMessage = Loadstring(File.Source)
+		if failMessage then
+			Console.output("\nError while compiling " .. File.Name .. ": " .. tostring(failMessage))
+			continue
 		end
 
-		local Console = {
-			input = input,
-			output = output,
-		}
-
-		local function commandLine(prompt)
-			local args = Console.input(prompt)
-			args = string.split(args, " ")
-			local commandName = args[1]
-
-			if Programs[commandName] then
-				local s, msg = pcall(Programs[commandName], Console)
-				if not s then
-					Console.output("\n" .. msg)
-				end
-			elseif commandName ~= "" then
-				Console.output('\n"' .. commandName .. '" is not a command')
-			end
+		-- kinda meta, but the function has to return a function which is the actual command line program or rcss stylesheet
+		local s, program = pcall(compileProgram)
+		if not s then
+			Console.output("\nError while compiling " .. File.Name .. ": " .. tostring(program))
+			continue
 		end
-		local function init()
-			TextBox = Instance.new("TextBox")
-			TextBox.Size = UDim2.new(1, 0, 1, 0)
-			TextBox.Font = Enum.Font.Code
-			TextBox.ClearTextOnFocus = false
-			TextBox:SetAttribute("class", "ConsoleText")
-			TextBox.TextWrapped = true
-			TextBox.TextXAlignment = Enum.TextXAlignment.Left
-			TextBox.TextYAlignment = Enum.TextYAlignment.Top
-			TextBox.Text = ""
-			TextBox.Parent = ScrollingFrame
-
-			TextBox:GetPropertyChangedSignal("Text"):Connect(textChanged)
-			TextBox:GetPropertyChangedSignal("CursorPosition"):Connect(cursorPositionChanged)
-
-			TerminalMaid(function()
-				terminalIsRunning = false
-			end)
-
-			task.spawn(function()
-				while terminalIsRunning do
-					commandLine("\n" .. LocalPlayer.Name .. " > ")
-					task.wait()
-				end
-			end)
+		if typeof(program) ~= "function" then
+			Console.output("\nFile " .. File.Name .. " failed to return a function")
+			continue
 		end
 
-		init()
+		-- if file name ends in .rcss, it's a stylesheet
+		if string.sub(File.Name, string.len(File.Name) - 4, -1) == ".rcss" then
+			table.insert(StyleSheets, program)
+			continue
+		end
 
-		return TerminalMaid
+		-- normal command line program
+		Programs[File.Name] = program
 	end
 
-	-- init
-	local ScrollingFrame = Instance.new("ScrollingFrame")
-	ScrollingFrame.Size = UDim2.new(1, 0, 1, 0)
-	ScrollingFrame.Parent = Frame
-	ConsoleMaid(ScrollingFrame)
+	-- update the terminal
+	CompileMaid(terminal(TerminalFrame, Programs))
 
-	ConsoleMaid(terminal(ScrollingFrame, ActualPrograms))
+	-- update the stylesheets
+	local dismountHandle = RobloxCSS.mount(EditorGui, StyleSheets)
+	local dismountHandle2 = RobloxCSS.mount(ToggleButtonGui, StyleSheets)
+	CompileMaid(function()
+		RobloxCSS.dismount(dismountHandle)
+		RobloxCSS.dismount(dismountHandle2)
+	end)
+end
 
-	return ConsoleMaid
+-- gui objects
+function terminal(ScrollingFrame, Programs)
+	--[[
+		@param: ScrollingFrame
+		@param: table Programs
+			{ string commandName --> function(Console): nil }
+		@return: Maid
+	]]
+
+	-- const
+	local NUM_EXTRA_LINES = 6
+
+	-- var
+	local TerminalMaid = Maid()
+	local InputMaid = Maid()
+	local terminalIsRunning = true
+	local TextBox
+
+	local readOnlyText = ""
+	local readOnlyLength = 0
+
+	-- TextBox events
+	local function cursorPositionChanged()
+		-- disallow moving cursor into existing output
+		if TextBox.CursorPosition > 0 and TextBox.CursorPosition < readOnlyLength + 2 then
+			TextBox.CursorPosition = readOnlyLength + 2
+			TextBox:CaptureFocus()
+		end
+	end
+	local function textChanged()
+		-- disallow deleting existing output
+		if string.len(TextBox.Text) < readOnlyLength then
+			TextBox.Text = readOnlyText
+		end
+	end
+
+	-- Console interface
+	local function output(text)
+		--[[
+			@param: string text
+			@post: renders text in Terminal
+		]]
+
+		local textHeight = TextBox.TextBounds.Y + NUM_EXTRA_LINES * TextBox.TextSize
+		readOnlyText = readOnlyText .. text
+		readOnlyLength = string.len(readOnlyText)
+
+		TextBox.Text = readOnlyText
+		TextBox.CursorPosition = readOnlyLength + 1
+		TextBox.Size = UDim2.new(1, 0, 0, textHeight)
+		ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, textHeight)
+		ScrollingFrame.CanvasPosition = Vector2.new(0, textHeight)
+	end
+	local function input(prompt)
+		--[[
+			@param: string prompt
+			@post: outputs prompt to screen
+			@post: yields until return is pressed
+		]]
+
+		local enterPressed = false
+		local function focusLost(...)
+			enterPressed = ...
+			if enterPressed then
+				TextBox:CaptureFocus()
+			end
+		end
+
+		InputMaid:DoCleaning()
+		InputMaid(TextBox.FocusLost:Connect(focusLost))
+
+		-- collect user input & wait until user presses Return
+		output(prompt)
+		while not enterPressed do
+			task.wait()
+		end
+
+		InputMaid:DoCleaning()
+
+		local userInput = string.sub(TextBox.Text, readOnlyLength + 1, -1)
+		userInput = string.gsub(userInput, "%c", "") -- sanitize the input from control characters
+		readOnlyText = readOnlyText .. userInput
+		readOnlyLength = string.len(readOnlyText)
+
+		return userInput
+	end
+	local Console = {
+		input = input,
+		output = output,
+	}
+
+	-- terminal functions
+	local function commandLine(prompt)
+		local args = Console.input(prompt)
+		args = string.split(args, " ")
+		local commandName = args[1]
+
+		if Programs[commandName] then
+			table.remove(args, 1)
+			local s, msg = pcall(Programs[commandName], Console, table.unpack(args))
+			if not s then
+				Console.output("\n" .. msg)
+			end
+		elseif commandName ~= "" then
+			Console.output('\n"' .. commandName .. '" is not a command')
+		end
+	end
+	local function init()
+		TextBox = Instance.new("TextBox")
+		TextBox.Size = UDim2.new(1, 0, 1, 0)
+		TextBox.Font = Enum.Font.Code
+		TextBox.ClearTextOnFocus = false
+		TextBox:SetAttribute("class", "ConsoleText")
+		TextBox.TextWrapped = true
+		TextBox.TextXAlignment = Enum.TextXAlignment.Left
+		TextBox.TextYAlignment = Enum.TextYAlignment.Top
+		TextBox.Text = ""
+		TextBox.Parent = ScrollingFrame
+		TerminalMaid(TextBox)
+
+		TextBox:GetPropertyChangedSignal("Text"):Connect(textChanged)
+		TextBox:GetPropertyChangedSignal("CursorPosition"):Connect(cursorPositionChanged)
+
+		TerminalMaid(function()
+			terminalIsRunning = false
+		end)
+
+		task.spawn(function()
+			while terminalIsRunning do
+				commandLine("\n" .. LocalPlayer.Name .. " > ")
+				task.wait()
+			end
+		end)
+	end
+
+	init()
+
+	return TerminalMaid
 end
 local function textEditor(Frame)
 	local EditorMaid = Maid()
@@ -431,60 +482,52 @@ local function guiMain(Parent)
 
 	StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, false)
 
-	local ScreenGui
-
 	-- top bar screen gui (enables/disables editor)
-	local TopBarGui = Instance.new("ScreenGui")
-	TopBarGui.IgnoreGuiInset = true
-	TopBarGui.Parent = Parent
-	GuiMaid(TopBarGui)
+	ToggleButtonGui = Instance.new("ScreenGui")
+	ToggleButtonGui.IgnoreGuiInset = true
+	ToggleButtonGui.Parent = Parent
+	GuiMaid(ToggleButtonGui)
 
 	local ToggleButton = Instance.new("TextButton")
 	ToggleButton.Size = UDim2.new(1, 0, 0, 50)
 	ToggleButton:SetAttribute("class", "EditorToggle")
-	ToggleButton.Parent = TopBarGui
+	ToggleButton.Parent = ToggleButtonGui
 
 	local function toggle()
-		ScreenGui.Enabled = not ScreenGui.Enabled
-		ToggleButton.Text = if ScreenGui.Enabled then "HIDE EDITOR" else "SHOW EDITOR"
+		EditorGui.Enabled = not EditorGui.Enabled
+		ToggleButton.Text = if EditorGui.Enabled then "HIDE EDITOR" else "SHOW EDITOR"
 	end
 	ToggleButton.Activated:Connect(toggle)
 
 	-- IDE screen gui
-	ScreenGui = Instance.new("ScreenGui")
-	ScreenGui.Parent = Parent
-	GuiMaid(ScreenGui)
+	EditorGui = Instance.new("ScreenGui")
+	EditorGui.Parent = Parent
+	GuiMaid(EditorGui)
 
-	ScreenGui.Enabled = false
+	EditorGui.Enabled = false
 	toggle()
 
-	local StyleMaid = Maid()
-	local function updateStyleSheets(NewStyleSheets)
-		StyleMaid:DoCleaning()
-		local dismountHandle = RobloxCSS.mount(ScreenGui, NewStyleSheets)
-		local dismountHandle2 = RobloxCSS.mount(TopBarGui, NewStyleSheets)
-		StyleMaid:GiveTask(function()
-			RobloxCSS.dismount(dismountHandle)
-			RobloxCSS.dismount(dismountHandle2)
-		end)
-	end
-
-	local Console = Instance.new("Frame")
-	Console.Size = UDim2.new(0.4, 0, 1, 0)
-	Console.Parent = ScreenGui
-	GuiMaid(console(Console, updateStyleSheets))
+	TerminalFrame = Instance.new("ScrollingFrame")
+	TerminalFrame.Size = UDim2.new(0.4, 0, 1, 0)
+	TerminalFrame.Parent = EditorGui
 
 	local TextEditor = Instance.new("Frame")
 	TextEditor.Position = UDim2.new(0.4, 0, 0, 0)
 	TextEditor.Size = UDim2.new(0.4, 0, 1, 0)
-	TextEditor.Parent = ScreenGui
+	TextEditor.Parent = EditorGui
 	GuiMaid(textEditor(TextEditor))
 
 	local Browser = Instance.new("Frame")
 	Browser.Position = UDim2.new(0.8, 0, 0, 0)
 	Browser.Size = UDim2.new(0.2, 0, 1, 0)
-	Browser.Parent = ScreenGui
+	Browser.Parent = EditorGui
 	GuiMaid(fileBrowser(Browser))
+
+	-- init
+	compilePrograms({
+		input = error,
+		output = warn,
+	})
 
 	return GuiMaid
 end
