@@ -105,8 +105,18 @@ local function terminal(ScrollingFrame, Programs)
 			@return: string | nil errorMessage
 		]]
 
+		-- trim leading spaces
+		local i = 1
+		while i <= string.len(args) and string.sub(args, i, i) == " " do
+			i += 1
+		end
+		args = string.sub(args, i, string.len(args))
+
+		-- string --> table
 		args = string.split(args, " ")
 		local commandName = args[1]
+
+		-- first arg is the name of the program
 		if Programs[commandName] then
 			table.remove(args, 1)
 			local s, msg = pcall(Programs[commandName], Console, table.unpack(args))
@@ -165,7 +175,7 @@ local function terminal(ScrollingFrame, Programs)
 
 	task.spawn(function()
 		while terminalIsRunning do
-			local args = input("\n" .. LocalPlayer.Name .. " > ")
+			local args = input("\n" .. LocalPlayer.Name .. ">")
 			command(args)
 			task.wait()
 		end
