@@ -57,10 +57,13 @@ local function terminal(ScrollingFrame, Programs)
 			@return: string text (the same as the argument)
 		]]
 
+		--[[
 		-- input validation
+
 		if not (typeof(text) == "string") then
 			error(tostring(text) .. " is not a string!")
 		end
+--]]
 
 		-- set text / cursor position
 		readOnlyText = readOnlyText .. text

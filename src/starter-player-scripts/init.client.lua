@@ -12,6 +12,10 @@ local Terminal = require(ReplicatedStorage:FindFirstChild("roblox-console"))
 local LocalPlayer = Players.LocalPlayer
 
 -- default program source
+local defaultInitialCommand = "hello-world"
+local defaultInitialCommandProgram = [[
+-- this returns the default arguments to command line; can be nil	
+return "]] .. defaultInitialCommand .. "\""
 local defaultFileName = "NewFile"
 local defaultNewProgram = [[
 return function(Console)
@@ -235,6 +239,7 @@ local AppState = ProxyTable({
 		file("clear", clearProgram),
 		file("exit-test", exitProgram),
 		file("READ_ME", readMeProgram),
+		file("INITIAL_COMMAND", defaultInitialCommandProgram),
 		file("frames.rcss", frameStylesheet),
 		file("text.rcss", textStylesheet),
 		file("colorNames.rcss", customColorsStylesheet),
@@ -276,12 +281,20 @@ local function compilePrograms(Console)
 			continue
 		end
 
-		-- kinda meta, but the function has to return a function which is the actual command line program or rcss stylesheet
+		-- kinda meta, but the function has to return a function which is the actual command line program or rcss stylesheet (CONTINUES)
 		local s, program = pcall(compileProgram)
 		if not s then
 			Console.output("\nError while compiling " .. File.Name .. ": " .. tostring(program))
 			continue
 		end
+
+		-- if file name is INITIAL_COMMAND then it should return a string to run as the initial command args (CONTINUES)
+		if File.Name == "INITIAL_COMMAND" then
+			defaultInitialCommand = program
+			continue
+		end
+
+		-- otherwise it should return a function (CONTINUES)
 		if typeof(program) ~= "function" then
 			Console.output("\nFile " .. File.Name .. " failed to return a function")
 			continue
@@ -300,7 +313,7 @@ local function compilePrograms(Console)
 	-- update the terminal
 	local NewTerminal = Terminal(TerminalFrame, Programs)
 	CompileMaid(NewTerminal)
-	NewTerminal.initialize("hello-world")
+	NewTerminal.initialize(defaultInitialCommand)
 
 	-- update the stylesheets
 	local dismountHandle = RobloxCSS.mount(EditorGui, StyleSheets)
