@@ -267,6 +267,7 @@ local function compilePrograms(Console)
 		update = compilePrograms,
 	}
 	local StyleSheets = {}
+	local CompileErrors = {}
 	for i, File in AppState.Files do
 		-- can't have two programs with the same name
 		if Programs[File.Name] then
@@ -277,7 +278,8 @@ local function compilePrograms(Console)
 		-- use Loadstring to turn the File.Source (string) into a real Lua function
 		local compileProgram, failMessage = Loadstring(File.Source)
 		if failMessage then
-			Console.output("\nError while compiling " .. File.Name .. ": " .. tostring(failMessage))
+			warn(failMessage)
+			table.insert(CompileErrors, "\nError while compiling " .. File.Name .. ": " .. tostring(failMessage))
 			continue
 		end
 
@@ -313,6 +315,12 @@ local function compilePrograms(Console)
 	-- update the terminal
 	local NewTerminal = Terminal(TerminalFrame, Programs)
 	CompileMaid(NewTerminal)
+
+	for _, msg in CompileErrors do
+		NewTerminal.output(msg)
+	end
+	NewTerminal.output("\n")
+
 	NewTerminal.initialize(defaultInitialCommand)
 
 	-- update the stylesheets

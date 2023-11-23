@@ -57,13 +57,7 @@ local function terminal(ScrollingFrame, Programs)
 			@return: string text (the same as the argument)
 		]]
 
-		--[[
-		-- input validation
-
-		if not (typeof(text) == "string") then
-			error(tostring(text) .. " is not a string!")
-		end
---]]
+		text = tostring(text)
 
 		-- set text / cursor position
 		readOnlyText = readOnlyText .. text
@@ -84,10 +78,7 @@ local function terminal(ScrollingFrame, Programs)
 			@return: string userInput
 		]]
 
-		-- input validation
-		if not (typeof(prompt) == "string") then
-			error(tostring(prompt) .. " is not a string!")
-		end
+		prompt = tostring(prompt)
 
 		local enterPressed = false
 		local function focusLost(...)
@@ -122,10 +113,7 @@ local function terminal(ScrollingFrame, Programs)
 			@return: string | nil errorMessage
 		]]
 
-		-- input validation
-		if not (typeof(args) == "string") then
-			error(tostring(args) .. " is not a string!")
-		end
+		args = tostring(args)
 
 		-- trim leading spaces
 		local i = 1
