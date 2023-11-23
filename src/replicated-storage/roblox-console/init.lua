@@ -57,6 +57,11 @@ local function terminal(ScrollingFrame, Programs)
 			@return: string text (the same as the argument)
 		]]
 
+		-- input validation
+		if not (typeof(text) == "string") then
+			error(tostring(text) .. " is not a string!")
+		end
+
 		-- set text / cursor position
 		readOnlyText = readOnlyText .. text
 		readOnlyLength = string.len(readOnlyText)
@@ -75,6 +80,11 @@ local function terminal(ScrollingFrame, Programs)
 			@post: yields until return is pressed
 			@return: string userInput
 		]]
+
+		-- input validation
+		if not (typeof(prompt) == "string") then
+			error(tostring(prompt) .. " is not a string!")
+		end
 
 		local enterPressed = false
 		local function focusLost(...)
@@ -109,6 +119,11 @@ local function terminal(ScrollingFrame, Programs)
 			@return: string | nil errorMessage
 		]]
 
+		-- input validation
+		if not (typeof(args) == "string") then
+			error(tostring(args) .. " is not a string!")
+		end
+
 		-- trim leading spaces
 		local i = 1
 		while i <= string.len(args) and string.sub(args, i, i) == " " do
@@ -119,24 +134,34 @@ local function terminal(ScrollingFrame, Programs)
 		-- string --> table
 		args = string.split(args, " ")
 		local commandName = args[1]
+		table.remove(args, 1)
 
 		-- first arg is the name of the program
+		-- if no program name, maybe it's a
+		-- default Console function
+		local s, msg
 		if Programs[commandName] then
-			table.remove(args, 1)
-			local s, msg = pcall(Programs[commandName], Console, table.unpack(args))
-			if not s then
-				-- Console.exit() has to use an error() call to exit
-				-- the current thread. this supports that implementation
-				-- but doesn't output the unnecessary error message
-				if exitFlag then
-					exitFlag = false
-					return
-				end
-
-				return Console.output("\n" .. msg .. "\n")
+			s, msg = pcall(Programs[commandName], Console, table.unpack(args))
+		elseif Console[commandName] then
+			s, msg = pcall(Console[commandName], table.unpack(args))
+		else
+			if commandName ~= "" then
+				return Console.output('\n"' .. commandName .. '" is not a command\n')
 			end
-		elseif commandName ~= "" then
-			return Console.output('\n"' .. commandName .. '" is not a command\n')
+			return
+		end
+
+		-- catch & output errors
+		if not s then
+			-- Console.exit() has to use an error() call to exit
+			-- the current thread. this supports that implementation
+			-- but doesn't output the unnecessary error message
+			if exitFlag then
+				exitFlag = false
+				return
+			end
+
+			return Console.output("\n" .. msg .. "\n")
 		end
 	end
 	local function destroy()
