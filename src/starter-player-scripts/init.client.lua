@@ -96,6 +96,21 @@ return function(Console, ...)
 	Console.clear()
 end
 ]]
+local exitProgram = [[
+return function(Console)
+	-- this program is to test
+	-- exiting a program from 
+	-- inside of itself
+
+	local userInput
+	while true do
+		userInput = Console.input("\nType 'q' to exit: ")
+		if userInput == "q" then
+			Console.exit()
+		end
+	end
+end
+]]
 local frameStylesheet = [[
 	-- if your file name ends in ".rcss", 
 	-- it will be interpreted as a stylesheet
@@ -216,8 +231,9 @@ local AppState = ProxyTable({
 		file("hello-world", helloWorldProgram),
 		file("input-test", inputProgram),
 		file("add", addTwoNumsProgram),
-		file("testCmd", commandProgram),
+		file("test-cmd", commandProgram),
 		file("clear", clearProgram),
+		file("exit-test", exitProgram),
 		file("READ_ME", readMeProgram),
 		file("frames.rcss", frameStylesheet),
 		file("text.rcss", textStylesheet),

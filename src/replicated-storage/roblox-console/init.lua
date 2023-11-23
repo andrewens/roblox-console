@@ -17,8 +17,10 @@ local function terminal(ScrollingFrame, Programs)
 	local TerminalMaid = Maid()
 	local ThreadMaid = Maid()
 	local InputMaid = Maid()
-	local terminalIsRunning = false
 	local TextBox
+
+	local terminalIsRunning = false
+	local exitFlag = false
 
 	local readOnlyText = ""
 	local readOnlyLength = 0
@@ -123,6 +125,14 @@ local function terminal(ScrollingFrame, Programs)
 			table.remove(args, 1)
 			local s, msg = pcall(Programs[commandName], Console, table.unpack(args))
 			if not s then
+				-- Console.exit() has to use an error() call to exit
+				-- the current thread. this supports that implementation
+				-- but doesn't output the unnecessary error message
+				if exitFlag then
+					exitFlag = false
+					return
+				end
+
 				return Console.output("\n" .. msg .. "\n")
 			end
 		elseif commandName ~= "" then
@@ -152,13 +162,14 @@ local function terminal(ScrollingFrame, Programs)
 
 		ThreadMaid:DoCleaning()
 		ThreadMaid:GiveTask(InputMaid)
+
 		ThreadMaid(function()
 			terminalIsRunning = false
 		end)
-		if args then
-			output(commandLineText .. args)
-		end
 		task.spawn(function()
+			if args then
+				output(commandLineText .. args)
+			end
 			terminalIsRunning = true
 			while terminalIsRunning do
 				args = args or input(commandLineText)
@@ -171,6 +182,13 @@ local function terminal(ScrollingFrame, Programs)
 	local function terminate()
 		ThreadMaid:DoCleaning()
 	end
+	local function exit()
+		--[[
+			@post: quits all current programs and returns to command loop
+		]]
+		exitFlag = true -- this tells Console.command(...) not to output the error message
+		error("Exited")
+	end
 
 	Console = {
 		input = input,
@@ -181,6 +199,7 @@ local function terminal(ScrollingFrame, Programs)
 		Destroy = destroy, -- in case someone uses Quenty's Maid implementation
 		initialize = initialize,
 		terminate = terminate,
+		exit = exit,
 	}
 
 	-- initialize the terminal
