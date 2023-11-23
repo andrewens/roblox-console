@@ -15,7 +15,7 @@ local LocalPlayer = Players.LocalPlayer
 local defaultInitialCommand = "hello-world"
 local defaultInitialCommandProgram = [[
 -- this returns the default arguments to command line; can be nil	
-return "]] .. defaultInitialCommand .. "\""
+return "]] .. defaultInitialCommand .. '"'
 local defaultFileName = "NewFile"
 local defaultNewProgram = [[
 return function(Console)
@@ -358,6 +358,7 @@ local function textEditor(Frame)
 	local ScrollingFrame = Instance.new("ScrollingFrame")
 	ScrollingFrame.Position = UDim2.new(0, 0, 0, FILE_NAME_HEIGHT)
 	ScrollingFrame.Size = UDim2.new(1, 0, 1, -FILE_NAME_HEIGHT)
+	ScrollingFrame.CanvasSize = UDim2.new(0, 0, 5, 0)
 	ScrollingFrame.Parent = Frame
 	EditorMaid(ScrollingFrame)
 
@@ -368,19 +369,9 @@ local function textEditor(Frame)
 	FileEditor.TextYAlignment = Enum.TextYAlignment.Top
 	FileEditor.TextWrapped = true
 	FileEditor:SetAttribute("class", "FileEditor")
+	FileEditor.Size = UDim2.new(1, 0, 10, 0)
 	FileEditor.Parent = ScrollingFrame
 	EditorMaid(FileEditor)
-
-	local function updateCanvasSize()
-		-- TextService is rubbish :/
-		--local textSize =
-		--	TextService:GetTextSize(FileEditor.Text, FileEditor.TextSize, FileEditor.Font, FileEditor.AbsoluteSize)
-
-		local textSizeY = string.len(FileEditor.Text)
-		FileEditor.Size = UDim2.new(1, 0, 0, textSizeY + 50)
-		ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, textSizeY + 50)
-	end
-	FileEditor:GetPropertyChangedSignal("Text"):Connect(updateCanvasSize)
 
 	local function setFileSource()
 		local File = getSelectedFile()
@@ -394,8 +385,6 @@ local function textEditor(Frame)
 		FileName.Text = File.Name
 		FileEditor.Text = File.Source
 	end))
-
-	updateCanvasSize()
 
 	return EditorMaid
 end
