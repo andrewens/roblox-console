@@ -282,7 +282,9 @@ local function compilePrograms(Console)
 	end
 
 	-- update the terminal
-	CompileMaid(Terminal(TerminalFrame, Programs))
+	local NewTerminal = Terminal(TerminalFrame, Programs)
+	CompileMaid(NewTerminal)
+	NewTerminal.initialize("hello-world")
 
 	-- update the stylesheets
 	local dismountHandle = RobloxCSS.mount(EditorGui, StyleSheets)

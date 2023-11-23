@@ -15,12 +15,14 @@ local function terminal(ScrollingFrame, Programs)
 
 	-- var
 	local TerminalMaid = Maid()
+	local ThreadMaid = Maid()
 	local InputMaid = Maid()
-	local terminalIsRunning = true
+	local terminalIsRunning = false
 	local TextBox
 
 	local readOnlyText = ""
 	local readOnlyLength = 0
+	local commandLineText = "\n" .. LocalPlayer.Name .. ">"
 
 	-- private
 	local function resizeTextBox()
@@ -141,6 +143,34 @@ local function terminal(ScrollingFrame, Programs)
 		readOnlyLength = 0
 		resizeTextBox()
 	end
+	local function initialize(args)
+		--[[
+			@param: string | nil args
+				- option to run a command on startup
+			@post: command loop runs until terminated
+		]]
+
+		ThreadMaid:DoCleaning()
+		ThreadMaid:GiveTask(InputMaid)
+		ThreadMaid(function()
+			terminalIsRunning = false
+		end)
+		if args then
+			output(commandLineText .. args)
+		end
+		task.spawn(function()
+			terminalIsRunning = true
+			while terminalIsRunning do
+				args = args or input(commandLineText)
+				command(args)
+				args = nil
+				task.wait()
+			end
+		end)
+	end
+	local function terminate()
+		ThreadMaid:DoCleaning()
+	end
 
 	Console = {
 		input = input,
@@ -149,10 +179,12 @@ local function terminal(ScrollingFrame, Programs)
 		clear = clear,
 		destroy = destroy,
 		Destroy = destroy, -- in case someone uses Quenty's Maid implementation
+		initialize = initialize,
+		terminate = terminate,
 	}
 
 	-- initialize the terminal
-	TerminalMaid(InputMaid)
+	TerminalMaid(ThreadMaid)
 
 	TextBox = Instance.new("TextBox")
 	TextBox.Size = UDim2.new(1, 0, 1, 0)
@@ -168,18 +200,6 @@ local function terminal(ScrollingFrame, Programs)
 
 	TextBox:GetPropertyChangedSignal("Text"):Connect(textChanged)
 	TextBox:GetPropertyChangedSignal("CursorPosition"):Connect(cursorPositionChanged)
-
-	TerminalMaid(function()
-		terminalIsRunning = false
-	end)
-
-	task.spawn(function()
-		while terminalIsRunning do
-			local args = input("\n" .. LocalPlayer.Name .. ">")
-			command(args)
-			task.wait()
-		end
-	end)
 
 	return Console
 end
