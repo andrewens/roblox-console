@@ -5,9 +5,9 @@ local StarterGui = game:GetService("StarterGui")
 
 local Maid = require(script:FindFirstChild("Maid"))
 local ProxyTable = require(script:FindFirstChild("ProxyTable"))
-local Loadstring = require(ReplicatedStorage:FindFirstChild("Loadstring"))
-local RobloxCSS = require(ReplicatedStorage:FindFirstChild("roblox-css"))
-local Terminal = require(ReplicatedStorage:FindFirstChild("roblox-console"))
+local Loadstring = require(ReplicatedStorage:FindFirstChild("Loadstring")) -- DEPENDENCY EXTERNAL TO REPO
+local RobloxCSS = require(ReplicatedStorage:FindFirstChild("roblox-css")) -- DEPENDENCY EXTERNAL TO REPO
+local Terminal = require(ReplicatedStorage:FindFirstChild("Terminal"))
 
 local LocalPlayer = Players.LocalPlayer
 
@@ -135,7 +135,7 @@ local textStylesheet = [[
 return function(RBXClass, CustomClass, CustomProperty)
 
 	local TextStyle = {
-		TextColor3 = "white",
+		TextColor3 = "green",
 		BackgroundColor3 = "black",
 		BorderSizePixel = 0,
 		TextXAlignment = Enum.TextXAlignment.Left,

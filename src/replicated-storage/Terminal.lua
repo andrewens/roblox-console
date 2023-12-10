@@ -1,11 +1,87 @@
+--[[
+    This is a command line GUI that you can embed into a ScrollingFrame Instance.
+
+    Andrew Ens
+    December 2023
+
+    View this gist and more on my github:
+        https://gist.github.com/andrewens/
+]]
+
+-- dependency
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
-local Maid = require(script:FindFirstChild("Maid"))
 
-local function terminal(ScrollingFrame, Programs)
+local Maid
+do
+	--[[
+        From Andrew Ens' github gist:
+            https://gist.github.com/andrewens/7897d3520dec32dcb69e0e4b600b07ca
+    ]]
+
+	-- private
+	local function handleTask(task)
+		local taskType = typeof(task)
+		if taskType == "function" then
+			task()
+		elseif taskType == "Instance" then
+			task:Destroy()
+		elseif taskType == "RBXScriptConnection" then
+			task:Disconnect()
+		else -- tables & what have you
+			(task.Destroy or task.destroy or task.Disconnect)(task)
+		end
+	end
+	local function isValidTask(val)
+		local valType = typeof(val)
+		return valType == "function"
+			or valType == "table" and (val.Destroy or val.destroy)
+			or valType == "Instance"
+			or valType == "RBXScriptConnection"
+	end
+	local function assertIsValidTask(val)
+		if not isValidTask(val) then
+			error(tostring(val) .. " (type=" .. typeof(val) .. ") is not a valid task for a Maid")
+		end
+	end
+
+	-- public
+	local function giveTask(self, newTask)
+		assertIsValidTask(newTask)
+		table.insert(self.__tasks, newTask)
+	end
+	local function destroy(self)
+		for _, task in pairs(self.__tasks) do
+			handleTask(task)
+		end
+		self.__tasks = {}
+	end
+
+	local methodAliases = {
+		GiveTask = giveTask,
+		giveTask = giveTask,
+		Destroy = destroy,
+		destroy = destroy,
+		doCleaning = destroy,
+		DoCleaning = destroy,
+	}
+	local mt = {
+		__call = giveTask,
+		__index = methodAliases,
+	}
+
+	function Maid()
+		return setmetatable({
+			__tasks = {},
+		}, mt)
+	end
+end
+
+-- public
+return function(ScrollingFrame, Commands)
 	--[[
 		@param: ScrollingFrame
-		@param: table Programs
+		@param: table Commands
 			{ string commandName --> function(Console): nil }
 		@return: Maid
 	]]
@@ -131,8 +207,8 @@ local function terminal(ScrollingFrame, Programs)
 		-- if no program name, maybe it's a
 		-- default Console function
 		local s, msg
-		if Programs[commandName] then
-			s, msg = pcall(Programs[commandName], Console, table.unpack(args))
+		if Commands[commandName] then
+			s, msg = pcall(Commands[commandName], Console, table.unpack(args))
 		elseif Console[commandName] then
 			s, msg = pcall(Console[commandName], table.unpack(args))
 		else
@@ -206,18 +282,6 @@ local function terminal(ScrollingFrame, Programs)
 		error("Exited")
 	end
 
-	Console = {
-		input = input,
-		output = output,
-		command = command,
-		clear = clear,
-		destroy = destroy,
-		Destroy = destroy, -- in case someone uses Quenty's Maid implementation
-		initialize = initialize,
-		terminate = terminate,
-		exit = exit,
-	}
-
 	-- initialize the terminal
 	TerminalMaid(ThreadMaid)
 
@@ -225,7 +289,6 @@ local function terminal(ScrollingFrame, Programs)
 	TextBox.Size = UDim2.new(1, 0, 1, 0)
 	TextBox.Font = Enum.Font.Code
 	TextBox.ClearTextOnFocus = false
-	TextBox:SetAttribute("class", "ConsoleText")
 	TextBox.TextWrapped = true
 	TextBox.TextXAlignment = Enum.TextXAlignment.Left
 	TextBox.TextYAlignment = Enum.TextYAlignment.Top
@@ -236,6 +299,19 @@ local function terminal(ScrollingFrame, Programs)
 	TextBox:GetPropertyChangedSignal("Text"):Connect(textChanged)
 	TextBox:GetPropertyChangedSignal("CursorPosition"):Connect(cursorPositionChanged)
 
+	-- return Console object for interacting with the terminal
+	Console = {
+		input = input,
+		output = output,
+		command = command,
+		clear = clear,
+		destroy = destroy,
+		Destroy = destroy, -- in case someone uses Quenty's Maid implementation
+		initialize = initialize,
+		terminate = terminate,
+		exit = exit,
+
+		TextBox = TextBox,
+	}
 	return Console
 end
-return terminal
