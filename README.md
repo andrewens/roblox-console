@@ -2,6 +2,8 @@
 
 An embeddable console GUI which you can write programs for.
 
+ > You can test a demo version [here](https://www.roblox.com/games/15359714312/roblox-console)
+
 I got tired of drawing UI buttons and menus and states for roblox game dev tools, so I decided to simplify to console-based programs.
 
 Because `roblox-console` is fundamentally about the GUI, I made a demo where you can try making and running your own programs.
