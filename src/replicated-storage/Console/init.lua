@@ -3,6 +3,7 @@ local function newConsole()
 	-- var
 	local TextBox = Instance.new("TextBox")
 	local charactersPerLine = 16
+	local text = "Welcome to `roblox-console`!"
 
 	local CustomGetMethods = {} -- string customPropertyName --> function(): <any>
 	local CustomSetMethods = {} -- string customPropertyName --> function(value): nil
@@ -10,6 +11,15 @@ local function newConsole()
 	-- public
 	local function isConsoleRBXInstance(self, AnyInstance)
 		return TextBox == AnyInstance
+	end
+	local function getConsoleText(self)
+		return text
+	end
+	local function setConsoleText(self, str)
+		if not (typeof(str) == "string") then
+			error(tostring(str) .. " isn't a string!")
+		end
+		text = str
 	end
 	local function getCharactersPerLine()
 		return charactersPerLine
@@ -49,6 +59,8 @@ local function newConsole()
 	}
 	local self = {
 		IsInstance = isConsoleRBXInstance,
+		GetText = getConsoleText,
+		SetText = setConsoleText,
 	}
 	setmetatable(self, mt)
 

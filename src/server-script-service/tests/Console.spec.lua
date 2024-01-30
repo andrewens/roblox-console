@@ -108,6 +108,32 @@ return function()
             MyConsole.CharactersPerLine = {}
         end)
     end)
+    it("Console:GetText() and Console:SetText(...) read/overwrite the Console's text buffer", function()
+        local MyConsole = Console.new()
+
+        -- Console's default text should be a hello-world intro
+        local INTRO_TEXT = "Welcome to `roblox-console`!"
+        shouldBeEqual(MyConsole:GetText(), INTRO_TEXT)
+
+        -- Console:SetText(...) should write to the Console's text
+        local newText = "The quick brown fox jumped over the lazy dog."
+        MyConsole:SetText(newText)
+        shouldBeEqual(MyConsole:GetText(), newText)
+
+        -- Console:SetText(...) should only allow strings
+        shouldError(function()
+            MyConsole:SetText()
+        end)
+        shouldError(function()
+            MyConsole:SetText({})
+        end)
+        shouldError(function()
+            MyConsole:SetText(math.pi)
+        end)
+        shouldError(function()
+            MyConsole:SetText(Instance.new("Part"))
+        end)
+    end)
 
     --[[
         History
