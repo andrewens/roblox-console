@@ -21,6 +21,12 @@ local function newConsole()
 		end
 		text = str
 	end
+	local function addConsoleText(self, str)
+		if not (typeof(str) == "string") then
+			error(tostring(str) .. " isn't a string!")
+		end
+		text = text .. str
+	end
 	local function getCharactersPerLine()
 		return charactersPerLine
 	end
@@ -61,6 +67,7 @@ local function newConsole()
 		IsInstance = isConsoleRBXInstance,
 		GetText = getConsoleText,
 		SetText = setConsoleText,
+		AddText = addConsoleText,
 	}
 	setmetatable(self, mt)
 

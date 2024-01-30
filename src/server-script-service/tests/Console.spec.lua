@@ -134,6 +134,30 @@ return function()
             MyConsole:SetText(Instance.new("Part"))
         end)
     end)
+    it("Console:AddText(...) appends text to the Console's text buffer", function()
+        local MyConsole = Console.new()
+
+        -- Console:AddText(...) appends new text
+        local startingText = MyConsole:GetText()
+        local addlText = " Lorem Ipsum"
+
+        MyConsole:AddText(addlText)
+        shouldBeEqual(MyConsole:GetText(), startingText .. addlText)
+
+        MyConsole:AddText(addlText)
+        shouldBeEqual(MyConsole:GetText(), startingText .. addlText .. addlText)
+
+        -- Console:AddText() should only allow strings
+        shouldError(function()
+            MyConsole:AddText()
+        end)
+        shouldError(function()
+            MyConsole:AddText({})
+        end)
+        shouldError(function()
+            MyConsole:AddText(math.pi)
+        end)
+    end)
 
     --[[
         History
