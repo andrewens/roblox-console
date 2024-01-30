@@ -7,7 +7,8 @@ return function()
             error(tostring(v1) .. " isn't a " .. tostring(typeName) .. "!")
         end
     end
-    it("Console.new is a function", function()
+    it("Console.new() returns a table", function()
         shouldHaveType(Console.new, "function")
+        shouldHaveType(Console.new(), "table")
     end)
 end

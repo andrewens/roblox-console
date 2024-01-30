@@ -1,5 +1,7 @@
 -- public
-local function newConsole() end
+local function newConsole()
+	return {}
+end
 
 return {
 	new = newConsole,
