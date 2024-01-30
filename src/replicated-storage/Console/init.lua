@@ -24,11 +24,11 @@ local function newConsole()
 	local function getCharactersPerLine()
 		return charactersPerLine
 	end
-	local function setCharactersPerLine(anyNaturalNumber)
-		if not (typeof(anyNaturalNumber) == "number") then
-			error(tostring(anyNaturalNumber) .. " is not a number!")
+	local function setCharactersPerLine(anyNumber)
+		if not (typeof(anyNumber) == "number") then
+			error(tostring(anyNumber) .. " is not a number!")
 		end
-		charactersPerLine = math.max(math.floor(anyNaturalNumber), 1)
+		charactersPerLine = math.max(math.floor(anyNumber), 1) -- convert to natural number
 	end
 
 	-- public | metamethods
