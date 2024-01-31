@@ -36,6 +36,9 @@ local function newConsole()
 		end
 		charactersPerLine = math.max(math.floor(anyNumber), 1) -- convert to natural number
 	end
+	local function getTextLines()
+		return string.split(text, "\n")
+	end
 
 	-- public | metamethods
 	local function __index(_, key)
@@ -68,6 +71,7 @@ local function newConsole()
 		GetText = getConsoleText,
 		SetText = setConsoleText,
 		AddText = addConsoleText,
+		GetLines = getTextLines,
 	}
 	setmetatable(self, mt)
 

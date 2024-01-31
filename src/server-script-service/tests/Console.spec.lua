@@ -26,6 +26,8 @@ return function()
         shouldHaveType(Console.new, "function")
         shouldHaveType(Console.new(), "table")
     end)
+
+    -- properties
     it("Console.Name can be get/set to strings", function()
         local testName = "MyConsole"
         local MyConsole = Console.new()
@@ -61,26 +63,6 @@ return function()
             MyConsole.Parent = badValue
         end)
     end)
-    it("Console:IsInstance(...) returns true if given the Instance rendering the Console", function()
-        local testName = "MyConsole"
-        local ScreenGui = Instance.new("ScreenGui")
-
-        -- put the Console in an arbitrary screen gui
-        local MyConsole = Console.new()
-        MyConsole.Name = testName
-        MyConsole.Parent = ScreenGui
-
-        -- Console == Instance should tell us if a given Instance is the Console's rendered TextBox or whatever
-        -- the method & naming convention is :PascalCase() operator to match ROBLOX Instance fields
-        local ConsoleInstance = ScreenGui:FindFirstChild(testName)
-        shouldBeEqual(MyConsole:IsInstance(ConsoleInstance), true)
-        shouldBeEqual(MyConsole:IsInstance(ScreenGui), false)
-        shouldBeEqual(MyConsole:IsInstance(Instance.new("Part")), false)
-
-        -- note that Instance == Console doesn't work because Console is still a table
-        shouldBeEqual(MyConsole == ConsoleInstance, false)
-        shouldBeEqual(MyConsole == ScreenGui, false)
-    end)
     it("Console.CharactersPerLine can be get/set to a natural number", function()
         local MyConsole = Console.new()
 
@@ -107,6 +89,28 @@ return function()
         shouldError(function()
             MyConsole.CharactersPerLine = {}
         end)
+    end)
+
+    -- methods
+    it("Console:IsInstance(...) returns true if given the Instance rendering the Console", function()
+        local testName = "MyConsole"
+        local ScreenGui = Instance.new("ScreenGui")
+
+        -- put the Console in an arbitrary screen gui
+        local MyConsole = Console.new()
+        MyConsole.Name = testName
+        MyConsole.Parent = ScreenGui
+
+        -- Console == Instance should tell us if a given Instance is the Console's rendered TextBox or whatever
+        -- the method & naming convention is :PascalCase() operator to match ROBLOX Instance fields
+        local ConsoleInstance = ScreenGui:FindFirstChild(testName)
+        shouldBeEqual(MyConsole:IsInstance(ConsoleInstance), true)
+        shouldBeEqual(MyConsole:IsInstance(ScreenGui), false)
+        shouldBeEqual(MyConsole:IsInstance(Instance.new("Part")), false)
+
+        -- note that Instance == Console doesn't work because Console is still a table
+        shouldBeEqual(MyConsole == ConsoleInstance, false)
+        shouldBeEqual(MyConsole == ScreenGui, false)
     end)
     it("Console:GetText() and Console:SetText(...) read/overwrite the Console's text buffer", function()
         local MyConsole = Console.new()
@@ -157,6 +161,21 @@ return function()
         shouldError(function()
             MyConsole:AddText(math.pi)
         end)
+    end)
+    it("Console:GetLines() returns an array of every line in the Console's text buffer, split by \\n characters.", function()
+        local MyConsole = Console.new()
+
+        local multiLineText = "Deli Selected\nHoney\nUncured Ham\nContains up to 24% of a seasoning solution\nNo nitrites or nitrates added\nNot preserved * Keep Refrigerated below 40 degrees F at all times"
+        local textArray = string.split(multiLineText, "\n")
+        MyConsole:SetText(multiLineText)
+
+        local Lines = MyConsole:GetLines()
+        shouldHaveType(Lines, "table")
+        shouldBeEqual(#textArray, #Lines)
+
+        for i, str in textArray do
+            shouldBeEqual(str, Lines[i])
+        end
     end)
 
     --[[
