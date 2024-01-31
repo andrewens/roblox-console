@@ -1,16 +1,43 @@
 -- public
 local function newConsole()
 	-- var
-	local TextBox = Instance.new("TextBox")
+	local ConsoleContainerInstance = Instance.new("Frame")
 	local maxCharsPerLine = 16
 	local text = "Welcome to `roblox-console`!"
 
 	local CustomGetMethods = {} -- string customPropertyName --> function(): <any>
 	local CustomSetMethods = {} -- string customPropertyName --> function(value): nil
 
+	local RenderedTextLabels = {} -- i --> TextLabel
+
+	local getTextLines -- public method
+
+	-- private
+	local function updateTextRender(self)
+		-- create new text labels
+		local NewRenderedTextLabels = {}
+		for i, textLine in getTextLines(self, true) do
+			local TextLabel = RenderedTextLabels[i]
+			if TextLabel == nil then
+				TextLabel = Instance.new("TextLabel")
+				TextLabel.Name = "Line" .. tostring(i)
+				TextLabel.Parent = ConsoleContainerInstance
+			end
+			RenderedTextLabels[i] = nil
+			NewRenderedTextLabels[i] = TextLabel
+			TextLabel.Text = textLine
+		end
+
+		-- cleanup
+		for i, TextLabel in RenderedTextLabels do
+			TextLabel:Destroy()
+		end
+		RenderedTextLabels = NewRenderedTextLabels
+	end
+
 	-- public
 	local function isConsoleRBXInstance(self, AnyInstance)
-		return TextBox == AnyInstance
+		return ConsoleContainerInstance == AnyInstance
 	end
 	local function getConsoleText(self)
 		return text
@@ -20,14 +47,16 @@ local function newConsole()
 			error(tostring(str) .. " isn't a string!")
 		end
 		text = str
+		updateTextRender(self)
 	end
 	local function addConsoleText(self, str)
 		if not (typeof(str) == "string") then
 			error(tostring(str) .. " isn't a string!")
 		end
 		text = text .. str
+		updateTextRender(self)
 	end
-	local function getTextLines(self, accountForTextWrapping)
+	function getTextLines(self, accountForTextWrapping)
 		if accountForTextWrapping then
 			local wrappedText = {} -- int --> string (words separated by spaces, no trailing space)
 			local wrappedLine = ""
@@ -75,29 +104,30 @@ local function newConsole()
 		end
 		return string.split(text, "\n")
 	end
-	local function getMaxCharsPerLine()
+	local function getMaxCharsPerLine(self)
 		return maxCharsPerLine
 	end
-	local function setMaxCharsPerLine(anyNumber)
+	local function setMaxCharsPerLine(self, anyNumber)
 		if not (typeof(anyNumber) == "number") then
 			error(tostring(anyNumber) .. " is not a number!")
 		end
 		maxCharsPerLine = math.max(math.floor(anyNumber), 1) -- convert to natural number
+		updateTextRender()
 	end
 
 	-- public | metamethods
-	local function __index(_, key)
+	local function __index(self, key)
 		if CustomGetMethods[key] then
-			return CustomGetMethods[key]()
+			return CustomGetMethods[key](self)
 		end
-		return TextBox[key]
+		return ConsoleContainerInstance[key]
 	end
-	local function __newindex(_, key, value)
+	local function __newindex(self, key, value)
 		if CustomSetMethods[key] then
-			CustomSetMethods[key](value)
+			CustomSetMethods[key](self, value)
 			return
 		end
-		TextBox[key] = value
+		ConsoleContainerInstance[key] = value
 	end
 
 	-- init
@@ -119,6 +149,8 @@ local function newConsole()
 		GetLines = getTextLines,
 	}
 	setmetatable(self, mt)
+
+	updateTextRender()
 
 	return self
 end

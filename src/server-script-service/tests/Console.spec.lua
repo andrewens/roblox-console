@@ -21,6 +21,55 @@ return function()
 		end
 	end
 
+	-- const (test cases)
+	local MULTI_LINE_TEXT =
+		"Deli Selected\nHoney\nUncured Ham\nContains up to 24% of a seasoning solution\nNo nitrites or nitrates added\nNot preserved * Keep Refrigerated below 40 degrees F at all times"
+	local TEXT_ARRAY_BY_NEW_LINES = string.split(MULTI_LINE_TEXT, "\n")
+	local TEXT_ARRAY_16_CHARS_PER_LINE = {
+		"Deli Selected",
+		"Honey",
+		"Uncured Ham",
+		"Contains up to", -- text wraps at the space
+		"24% of a",
+		"seasoning",
+		"solution",
+		"No nitrites or",
+		"nitrates added",
+		"Not preserved *",
+		"Keep",
+		"Refrigerated",
+		"below 40 degrees",
+		"F at all times",
+	}
+	local TEXT_ARRAY_8_CHARS_PER_LINE = {
+		-- text wrapping gets ugly when the words are longer than Console.MaxCharactersPerLine
+		"Deli",
+		"Selected",
+		"Honey",
+		"Uncured",
+		"Ham",
+		"Contains",
+		"up to",
+		"24% of a",
+		"seasonin",
+		"g",
+		"solution", -- note that "solution" got put on a new line because it doesn't fit the previous line
+		"No",
+		"nitrites",
+		"or",
+		"nitrates",
+		"added",
+		"Not",
+		"preserve",
+		"d * Keep", -- no new line here for '* Keep' because it fits
+		"Refriger",
+		"ated",
+		"below 40",
+		"degrees",
+		"F at all",
+		"times",
+	}
+
 	-- init
 	it("Console.new() returns a table", function()
 		shouldHaveType(Console.new, "function")
@@ -93,6 +142,11 @@ return function()
 
 	-- methods
 	it("Console:IsInstance(...) returns true if given the Instance rendering the Console", function()
+		-- An explicit reference to the Console's Instance is not given because in practice
+		-- you should not be referencing the Console's Instance directly.
+		-- However, in order to properly test that the Console renders correctly, it is necessary
+		-- to have some mechanism of ensuring that the Console does actually produce some sort of
+		-- Instance (and that it actually renders text, as per the other tests.)
 		local testName = "MyConsole"
 		local ScreenGui = Instance.new("ScreenGui")
 
@@ -101,7 +155,7 @@ return function()
 		MyConsole.Name = testName
 		MyConsole.Parent = ScreenGui
 
-		-- Console == Instance should tell us if a given Instance is the Console's rendered TextBox or whatever
+		-- Console:IsInstance(<RBXInstance>) should tell us if a given Instance is the Console's rendered TextBox or whatever
 		-- the method & naming convention is :PascalCase() operator to match ROBLOX Instance fields
 		local ConsoleInstance = ScreenGui:FindFirstChild(testName)
 		shouldBeEqual(MyConsole:IsInstance(ConsoleInstance), true)
@@ -166,95 +220,96 @@ return function()
 		"Console:GetLines() returns an array of every line in the Console's text buffer, split by \\n characters.",
 		function()
 			local MyConsole = Console.new()
-
-			local multiLineText =
-				"Deli Selected\nHoney\nUncured Ham\nContains up to 24% of a seasoning solution\nNo nitrites or nitrates added\nNot preserved * Keep Refrigerated below 40 degrees F at all times"
-			local textArray = string.split(multiLineText, "\n")
-			MyConsole:SetText(multiLineText)
+			MyConsole:SetText(MULTI_LINE_TEXT)
 
 			local Lines = MyConsole:GetLines()
 			shouldHaveType(Lines, "table")
-			shouldBeEqual(#textArray, #Lines)
 
-			for i, str in textArray do
+			for i, str in TEXT_ARRAY_BY_NEW_LINES do
 				shouldBeEqual(str, Lines[i])
 			end
+			shouldBeEqual(#TEXT_ARRAY_BY_NEW_LINES, #Lines)
 		end
 	)
 	it(
 		"Console:GetLines(true) returns an array of every line in the Console's text buffer, accounting for text wrapping per Console.MaxCharactersPerLine",
 		function()
 			local MyConsole = Console.new()
-			local multiLineText =
-				"Deli Selected\nHoney\nUncured Ham\nContains up to 24% of a seasoning solution\nNo nitrites or nitrates added\nNot preserved * Keep Refrigerated below 40 degrees F at all times"
 
-			local charsPerLine = 16
-			local textArray = {
-				"Deli Selected",
-				"Honey",
-				"Uncured Ham",
-				"Contains up to", -- text wraps at the space
-				"24% of a",
-				"seasoning",
-				"solution",
-				"No nitrites or",
-				"nitrates added",
-				"Not preserved *",
-				"Keep",
-				"Refrigerated",
-				"below 40 degrees",
-				"F at all times",
-			}
-			MyConsole.MaxCharactersPerLine = charsPerLine
-			MyConsole:SetText(multiLineText)
+			-- Console:GetLines(true) for 16 max chars per line
+			MyConsole.MaxCharactersPerLine = 16
+			MyConsole:SetText(MULTI_LINE_TEXT)
 			local Lines = MyConsole:GetLines(true) -- accountForTextWrapping = true
 
 			shouldHaveType(Lines, "table")
-			for i, str in textArray do
+			for i, str in TEXT_ARRAY_16_CHARS_PER_LINE do
 				shouldBeEqual("'" .. str .. "'", "'" .. Lines[i] .. "'") -- added quotes so you can see empty spaces
 			end
-			shouldBeEqual(#textArray, #Lines)
+			shouldBeEqual(#TEXT_ARRAY_16_CHARS_PER_LINE, #Lines)
 
-			-- text wrapping gets ugly when the words are longer than Console.MaxCharactersPerLine
-			charsPerLine = 8
-			textArray = {
-				"Deli",
-				"Selected",
-				"Honey",
-				"Uncured",
-				"Ham",
-				"Contains",
-				"up to",
-				"24% of a",
-				"seasonin",
-				"g",
-				"solution", -- note that "solution" got put on a new line because it doesn't fit
-				"No",
-				"nitrites",
-				"or",
-				"nitrates",
-				"added",
-				"Not",
-				"preserve",
-				"d * Keep", -- no new line here for '* Keep' because it fits
-				"Refriger",
-				"ated",
-				"below 40",
-				"degrees",
-				"F at all",
-				"times",
-			}
-
-			MyConsole.MaxCharactersPerLine = charsPerLine
+			-- Console:GetLines(true) for 8 max chars per line
+			MyConsole.MaxCharactersPerLine = 8
 			Lines = MyConsole:GetLines(true) -- accountForTextWrapping = true
-
 			shouldHaveType(Lines, "table")
-			for i, str in textArray do
+
+			for i, str in TEXT_ARRAY_8_CHARS_PER_LINE do
 				shouldBeEqual("'" .. str .. "'", "'" .. Lines[i] .. "'") -- added quotes so you can see empty spaces
 			end
-			shouldBeEqual(#textArray, #Lines)
+			shouldBeEqual(#TEXT_ARRAY_8_CHARS_PER_LINE, #Lines)
 		end
 	)
+
+	-- render
+	it("Every line in Console (accounting for text wrap) is rendered as a TextLabel", function()
+		local MyConsole = Console.new()
+
+		-- retrieve the Instance of the Console
+		local consoleName = "MyConsole"
+		local ConsoleInstance
+		local ScreenGui = Instance.new("ScreenGui")
+		MyConsole.Name = consoleName
+		MyConsole.Parent = ScreenGui
+		ConsoleInstance = ScreenGui:FindFirstChild(consoleName)
+		shouldHaveType(ConsoleInstance, "Instance")
+
+		local function textShouldBeRendered()
+			-- every text line should have a TextLabel
+			local RenderedTextLabels = {} -- TextLabel --> true
+			for i, line in MyConsole:GetLines(true) do
+				local TextLabel = ConsoleInstance:FindFirstChild("Line" .. i)
+				shouldHaveType(TextLabel, "Instance")
+				shouldBeEqual(TextLabel.Text, line)
+				RenderedTextLabels[TextLabel] = true
+			end
+
+			-- check for extraneous leftover TextLabels that didn't get cleaned up
+			for i, TextLabel in ConsoleInstance:GetChildren() do
+				if TextLabel:IsA("TextLabel") and not RenderedTextLabels[TextLabel] then
+					error(
+						"Console rendered an extra TextLabel: "
+							.. tostring(TextLabel.Name)
+							.. ".Text = "
+							.. tostring(TextLabel.Text)
+					)
+				end
+			end
+		end
+
+		textShouldBeRendered()
+
+		MyConsole:SetText(MULTI_LINE_TEXT)
+		MyConsole.MaxCharactersPerLine = 16
+		textShouldBeRendered()
+
+		MyConsole.MaxCharactersPerLine = 8
+		textShouldBeRendered()
+
+		MyConsole:AddText("dfkhkdfjkhjdkafjhklajfdkhlfkjdksdfjkdsajfklasd")
+		textShouldBeRendered()
+
+		MyConsole:SetText("")
+		textShouldBeRendered()
+	end)
 
 	--[[
         History
