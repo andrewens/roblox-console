@@ -63,31 +63,31 @@ return function()
 			MyConsole.Parent = badValue
 		end)
 	end)
-	it("Console.CharactersPerLine can be get/set to a natural number", function()
+	it("Console.MaxCharactersPerLine can be get/set to a natural number", function()
 		local MyConsole = Console.new()
 
-		-- Console.CharactersPerLine should have a default value of 16
-		shouldHaveType(MyConsole.CharactersPerLine, "number")
-		shouldBeEqual(MyConsole.CharactersPerLine, 16)
+		-- Console.MaxCharactersPerLine should have a default value of 16
+		shouldHaveType(MyConsole.MaxCharactersPerLine, "number")
+		shouldBeEqual(MyConsole.MaxCharactersPerLine, 16)
 
-		-- Console.CharactersPerLine should be writable
+		-- Console.MaxCharactersPerLine should be writable
 		local newCharsPerLine = 32
-		MyConsole.CharactersPerLine = newCharsPerLine
-		shouldBeEqual(MyConsole.CharactersPerLine, newCharsPerLine)
+		MyConsole.MaxCharactersPerLine = newCharsPerLine
+		shouldBeEqual(MyConsole.MaxCharactersPerLine, newCharsPerLine)
 
-		-- Console.CharactersPerLine gets clamped/truncated into a natural number
-		MyConsole.CharactersPerLine = 0
-		shouldBeEqual(MyConsole.CharactersPerLine, 1) -- it gets clamped
+		-- Console.MaxCharactersPerLine gets clamped/truncated into a natural number
+		MyConsole.MaxCharactersPerLine = 0
+		shouldBeEqual(MyConsole.MaxCharactersPerLine, 1) -- it gets clamped
 
-		MyConsole.CharactersPerLine = 3.678
-		shouldBeEqual(MyConsole.CharactersPerLine, 3) -- it gets truncated
+		MyConsole.MaxCharactersPerLine = 3.678
+		shouldBeEqual(MyConsole.MaxCharactersPerLine, 3) -- it gets truncated
 
-		-- Console.CharactersPerLine can't be a non-number value
+		-- Console.MaxCharactersPerLine can't be a non-number value
 		shouldError(function()
-			MyConsole.CharactersPerLine = "string"
+			MyConsole.MaxCharactersPerLine = "string"
 		end)
 		shouldError(function()
-			MyConsole.CharactersPerLine = {}
+			MyConsole.MaxCharactersPerLine = {}
 		end)
 	end)
 
@@ -182,7 +182,7 @@ return function()
 		end
 	)
 	it(
-		"Console:GetLines(true) returns an array of every line in the Console's text buffer, accounting for text wrapping per Console.CharactersPerLine",
+		"Console:GetLines(true) returns an array of every line in the Console's text buffer, accounting for text wrapping per Console.MaxCharactersPerLine",
 		function()
 			local MyConsole = Console.new()
 			local multiLineText =
@@ -205,7 +205,7 @@ return function()
 				"below 40 degrees",
 				"F at all times",
 			}
-			MyConsole.CharactersPerLine = charsPerLine
+			MyConsole.MaxCharactersPerLine = charsPerLine
 			MyConsole:SetText(multiLineText)
 			local Lines = MyConsole:GetLines(true) -- accountForTextWrapping = true
 
@@ -215,7 +215,7 @@ return function()
 			end
 			shouldBeEqual(#textArray, #Lines)
 
-			-- text wrapping gets ugly when the words are longer than Console.CharactersPerLine
+			-- text wrapping gets ugly when the words are longer than Console.MaxCharactersPerLine
 			charsPerLine = 8
 			textArray = {
 				"Deli",
@@ -245,7 +245,7 @@ return function()
 				"times",
 			}
 
-			MyConsole.CharactersPerLine = charsPerLine
+			MyConsole.MaxCharactersPerLine = charsPerLine
 			Lines = MyConsole:GetLines(true) -- accountForTextWrapping = true
 
 			shouldHaveType(Lines, "table")

@@ -2,7 +2,7 @@
 local function newConsole()
 	-- var
 	local TextBox = Instance.new("TextBox")
-	local charactersPerLine = 16
+	local maxCharsPerLine = 16
 	local text = "Welcome to `roblox-console`!"
 
 	local CustomGetMethods = {} -- string customPropertyName --> function(): <any>
@@ -38,7 +38,7 @@ local function newConsole()
 					-- if the word fits, we just add it to the previous line
 					local spaceNeeded = string.len(wrappedLine) > 0 -- the word needs a space if other words come before it
 					local wordLength = string.len(word) + (if spaceNeeded then 1 else 0)
-					if wordLength + string.len(wrappedLine) <= charactersPerLine then
+					if wordLength + string.len(wrappedLine) <= maxCharsPerLine then
 						if spaceNeeded then
 							wrappedLine = wrappedLine .. " "
 						end
@@ -52,15 +52,15 @@ local function newConsole()
 
 					-- does the word fit now? (no spaces are required b/c it's a fresh new line)
 					wordLength = string.len(word)
-					if wordLength <= charactersPerLine then
+					if wordLength <= maxCharsPerLine then
 						wrappedLine = wrappedLine .. word
 						continue
 					end
 
-					-- at this point the word is longer than charactersPerLine and we have to chop it up into sections
-					for k = 0, math.ceil(string.len(word) / charactersPerLine) - 1 do
-						wrappedLine = string.sub(word, (k * charactersPerLine) + 1, (k + 1) * charactersPerLine)
-						if string.len(wrappedLine) >= charactersPerLine then
+					-- at this point the word is longer than maxCharsPerLine and we have to chop it up into sections
+					for k = 0, math.ceil(string.len(word) / maxCharsPerLine) - 1 do
+						wrappedLine = string.sub(word, (k * maxCharsPerLine) + 1, (k + 1) * maxCharsPerLine)
+						if string.len(wrappedLine) >= maxCharsPerLine then
 							table.insert(wrappedText, wrappedLine)
 							wrappedLine = "" -- i'm not sure if this is necessary but i'm paranoid of a tiny edge case
 						end
@@ -75,14 +75,14 @@ local function newConsole()
 		end
 		return string.split(text, "\n")
 	end
-	local function getCharactersPerLine()
-		return charactersPerLine
+	local function getMaxCharsPerLine()
+		return maxCharsPerLine
 	end
-	local function setCharactersPerLine(anyNumber)
+	local function setMaxCharsPerLine(anyNumber)
 		if not (typeof(anyNumber) == "number") then
 			error(tostring(anyNumber) .. " is not a number!")
 		end
-		charactersPerLine = math.max(math.floor(anyNumber), 1) -- convert to natural number
+		maxCharsPerLine = math.max(math.floor(anyNumber), 1) -- convert to natural number
 	end
 
 	-- public | metamethods
@@ -102,10 +102,10 @@ local function newConsole()
 
 	-- init
 	CustomGetMethods = {
-		CharactersPerLine = getCharactersPerLine,
+		MaxCharactersPerLine = getMaxCharsPerLine,
 	}
 	CustomSetMethods = {
-		CharactersPerLine = setCharactersPerLine,
+		MaxCharactersPerLine = setMaxCharsPerLine,
 	}
 	local mt = {
 		__index = __index,
